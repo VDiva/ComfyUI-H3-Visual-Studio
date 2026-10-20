@@ -3,6 +3,7 @@ import {openFolderTemplate} from './folder-template.mjs';
 import {livePreview} from './live-preview.mjs';
 import {modelDownloader} from './model-download.mjs';
 import {modelReport,reportText,assertModels} from './model-check.mjs';
+import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
 import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs';
@@ -33,9 +34,9 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.4.1</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.5.3</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
- <div class="tools"><button id="folder">导入目录并建页</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组官方工作流</button></div>
+ <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组官方工作流</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
  <div class="row"><span class="title">工作模式</span><select id="mode"><option value="reference">参考素材 → 生视频</option><option value="auto_character">自动生成人物参考图 → 生视频</option></select><span class="muted">模式按页面保存</span></div>
  <div id="character-panel" class="library" hidden><div class="row"><span class="title grow">人物参考图 · Z-Image Turbo</span><button id="extract-characters">从提示词识别人物</button><button id="add-character">添加人物</button><button id="generate-characters">只生成/更新人物图</button></div><p class="muted">先提取人物外貌设定，可编辑后生图；同一页按人物复用，不为每个素材组重复生成。缺少明确人物标签时请补充设定。</p><details><summary>生图模型与风格设置（首次需下载模型）</summary><div id="image-settings" class="row"></div><textarea id="image-style" style="min-height:65px" placeholder="统一人物参考图画风"></textarea><a href="https://huggingface.co/Comfy-Org/z_image_turbo/tree/main/split_files" target="_blank" rel="noopener">官方模型下载</a></details><div id="characters"></div></div>
@@ -138,13 +139,19 @@ function attach(node){
   const input=document.createElement('input');input.value=project.settings[key];input.type=['sampler','scheduler'].includes(key)?'text':'number';if(key==='width'||key==='height')input.step=32;
   input.dataset.setting=key;input.onchange=()=>{project.settings[key]=input.type==='number'?Number(input.value):input.value;persist();updateBinding();};label.append(input);$('settings').append(label);
  }
+ const accelerationLabel=document.createElement('label');accelerationLabel.textContent='视频加速 ';
+ const accelerationSelect=document.createElement('select');accelerationSelect.id='video-acceleration';
+ for(const [value,text] of ACCELERATION_MODES){const option=document.createElement('option');option.value=value;option.textContent=text;accelerationSelect.append(option);}
+ accelerationLabel.append(accelerationSelect);$('settings').prepend(accelerationLabel);
+ const accelerationHelp=document.createElement('span');accelerationHelp.className='muted';accelerationHelp.id='acceleration-help';$('settings').append(accelerationHelp);
+ accelerationSelect.onchange=()=>{project.settings.acceleration=accelerationSelect.value;syncSettings();persist();updateBinding();log(accelerationSummary(project.settings));};
  function updateBinding(){
   const g=current();if(!g)return;
   try{const video=videoWithCharacters(project,g);const p=planGroup(video.project,video.group);$('binding').textContent=`本组实际输入 ${p.images.length}图 / ${p.audios.length}音频 / ${p.videos.length}视频；${p.length}帧 ≈ ${(p.length/24).toFixed(2)}秒。`;}catch(error){$('binding').textContent='待修正：'+error.message;}
   $('summary').textContent=`${project.groups.length}组 · ${project.groups.reduce((n,g)=>n+Number(g.seconds||0),0).toFixed(1)}秒请求时长`;
   const bar=$('timeline').children[selected];if(bar)bar.textContent=`${g.number} · ${g.seconds}s`;
  }
- const syncSettings=()=>{root.querySelectorAll('[data-setting]').forEach(el=>el.value=project.settings[el.dataset.setting]);};
+ const syncSettings=()=>{const effective=effectiveVideoSettings(project.settings);accelerationSelect.value=project.settings.acceleration||'inherit';accelerationHelp.textContent=accelerationSummary(project.settings);root.querySelectorAll('[data-setting]').forEach(el=>{const key=el.dataset.setting;el.value=effective[key];el.disabled=accelerationSelect.value!=='inherit'&&['steps','sampler','scheduler'].includes(key);});};
  $('name').oninput=()=>{project.name=$('name').value;const label=$('page-list').querySelector('.page.active');if(label)label.textContent=project.name;persist();};$('common').oninput=()=>{project.commonPrompt=$('common').value;persist();};$('common').onchange=updateBinding;
  $('audio').onchange=()=>{project.audioReference=$('audio').checked;persist();render();};
  $('prompt').oninput=()=>{if(current()){current().prompt=$('prompt').value;persist();}};$('prompt').onchange=updateBinding;
@@ -181,10 +188,9 @@ function attach(node){
    const added=[];
    for(const chapter of items){if(stop||disposed)throw Error('已取消导入；原有页面保留');added.push(await chapterPage(chapter,mode));}
    if(stop||disposed)throw Error('已取消导入；原有页面保留');
-   const initial=workspace.pages.length===1&&!project.groups.length&&!Object.values(project.media).some(rows=>rows.length);
-   if(initial)workspace={version:1,pages:added,activePageId:added[0].pageId};else workspace=mergePages(workspace,added);
+   workspace=readWorkspace({version:1,pages:added,activePageId:added[0].pageId});
    project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;persist();syncSettings();render();
-   log(`已按文件夹自动创建${added.length}个页面，左侧使用原文件夹名称；已保存到节点工程数据。尚未提交生成。`);
+   log(`已清除旧工作区并导入${added.length}个文件夹页面；旧页面与结果记录已替换，服务器素材及成片文件未删除。已保存到节点工程数据，尚未提交生成。`);
    return added.length;
   }finally{setBusy(false);}
  }
@@ -206,7 +212,7 @@ function attach(node){
  const downloader=modelDownloader({api,container:$('model-downloads'),log,recheck:async()=>{try{showPanel('models');await checkAllModels(await app.graphToPrompt());}catch(error){log(error.message);}}});
  async function checkAllModels(graph,{imageOnly=false,install=false}={}){
   const response=await api.fetchApi('/object_info');if(!response.ok)throw Error('无法获取云端模型清单，未提交任务');
-  const prompts=imageOnly?[]:[graph.output];
+  const prompts=imageOnly?[]:[accelerateApi(graph.output,project.settings)];
   if(imageOnly||project.mode==='auto_character')prompts.push(compileCharacterImage(project,{id:'CHECK',name:'模型检查',description:'仅检查模型，不提交生图'}).prompt);
   const report=modelReport(await response.json(),prompts);if(install||report.missing.length||report.nodes.length||report.unknown.length)showPanel('models');log(reportText(report));await downloader.show(report);if(install){await downloader.install(report);if(report.nodes.length)log('模型下载已处理；以下是缺少的节点，需要更新ComfyUI，不是下载权重：\n'+report.nodes.join('\n'));}else assertModels(report);return report;
  }
@@ -285,8 +291,9 @@ function attach(node){
     if(n.type==='RandomNoise')n.widgets_values[0]=project.settings.seed;
     if(n.type==='KSamplerSelect')n.widgets_values[0]=project.settings.sampler;
    }
-   output.nodes=output.nodes.filter(n=>n.type!=='H3VisualProject');download(output,`${project.name}_素材组${g.number}_官方.json`);log('已导出本组官方工作流；没有提交任务。');
+   accelerateWorkflow(output,project.settings);output.nodes=output.nodes.filter(n=>n.type!=='H3VisualProject');download(output,`${project.name}_素材组${g.number}_官方.json`);log('已导出本组官方工作流；没有提交任务。');
   }catch(error){log('导出失败：'+error.message);}};
+ syncSettings();
  const dom=node.addDOMWidget('h3_visual','H3Visual',host,{serialize:false,hideOnZoom:false});dom.computeSize=()=>[1760,1020];
  node.setSize([1800,1100]);host.addEventListener('pointerdown',e=>e.stopPropagation());host.addEventListener('keydown',e=>e.stopPropagation());
  const state={installModels,importChapters,getMode:()=>project.mode,isBusy:()=>busy,async queueCurrent(number,data,send,options){

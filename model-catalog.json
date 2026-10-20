@@ -1,5 +1,14 @@
 [
   {
+    "key": "models/loras/dmad_minimax_h3_4step_full_critic_comfyui.safetensors",
+    "category": "loras",
+    "name": "dmad_minimax_h3_4step_full_critic_comfyui.safetensors",
+    "url": "https://huggingface.co/ZhengmingYu/DMAD/resolve/main/minimax_h3/dmad_minimax_h3_4step_full_critic_comfyui.safetensors",
+    "source": "https://huggingface.co/ZhengmingYu/DMAD",
+    "size": null,
+    "sha256": null
+  },
+  {
     "key": "models/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors",
     "category": "diffusion_models",
     "name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",

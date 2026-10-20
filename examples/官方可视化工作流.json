@@ -810,7 +810,7 @@
         "Node name for S&R": "H3VisualProject"
       },
       "widgets_values": [
-        "{\"version\": 1, \"activePageId\": \"page-initial\", \"pages\": [{\"version\": 1, \"pageId\": \"page-initial\", \"name\": \"未命名项目\", \"commonPrompt\": \"\", \"audioReference\": false, \"settings\": {\"width\": 864, \"height\": 480, \"steps\": 8, \"seed\": 666, \"sampler\": \"res_multistep\", \"scheduler\": \"simple\"}, \"media\": {\"images\": [], \"audios\": [], \"videos\": []}, \"groups\": [], \"mode\": \"reference\", \"characters\": []}]}"
+        "{\"version\":1,\"activePageId\":\"page-initial\",\"pages\":[{\"version\":1,\"pageId\":\"page-initial\",\"name\":\"未命名项目\",\"commonPrompt\":\"\",\"audioReference\":false,\"settings\":{\"width\":864,\"height\":480,\"steps\":8,\"seed\":666,\"sampler\":\"res_multistep\",\"scheduler\":\"simple\",\"acceleration\":\"dmad4\"},\"media\":{\"images\":[],\"audios\":[],\"videos\":[]},\"groups\":[],\"mode\":\"reference\",\"characters\":[]}]}"
       ]
     }
   ],
@@ -987,7 +987,7 @@
       ]
     },
     "h3_visual_studio": {
-      "version": "0.4.1",
+      "version": "0.5.3",
       "sampling": "official",
       "fps": 24
     }

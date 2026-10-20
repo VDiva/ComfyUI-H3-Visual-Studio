@@ -3,7 +3,7 @@ export function buildFolderTemplate({name='1_26',pages=1,groups=1,seconds=4,mode
  if(!Number.isInteger(pages)||pages<1||pages>100||!Number.isInteger(groups)||groups<1||groups>100||pages*groups>1000)throw Error('上传目录和素材组数量各为1—100，总组数不超过1000');
  if(!Number.isFinite(seconds)||seconds<0.2||seconds>20.7)throw Error('每组时长需为0.2—20.7秒');
  const entries=[{path:name+'/',directory:true}];const add=(path,text)=>entries.push({path:name+'/'+path,text});
- add('填写说明.txt','这是目录与提示词占位模板，不是已完成剧本。请替换全部【待填写】内容后再生成。\n每份上传目录只设公共参考图，图片按@图片1.png至@图片N连续编号，素材组内不另设参考图文件夹。\n参考模式需添加真实图片并在提示词写对应<Picture N>；自动人物生图模式无需准备图片，但需填写真实人物名、S编号和外貌。\n参考音频默认关闭，不生成虚构<Audio N>引用。索引时长与提示词动作区间须同步修改。\n');
+ add('填写说明.txt','这是目录与提示词占位模板，不是已完成剧本。请替换全部【待填写】内容后再生成。\n目录层级：外层章节/上传子目录/素材组1/提示词.txt；每个上传子目录导入为一页，素材组不是页面。\n每页必须保留自己的素材组索引.md，列顺序为素材组、请求秒数、提示词相对路径；第二列填纯数字，不带“秒”。外层汇总不能代替每页索引。\n参考模式：每页公共参考图放真实@图片1.png至@图片N，连续编号；素材组内不另设参考图文件夹。空图片目录或放图说明不能当真实图片。\n自动人物生图模式：不需要图片目录，需填写真实人物名、固定S编号和外貌服装；导入前选择“自动人物生图 → 生视频”。\n参考音频默认关闭，不生成虚构<Audio N>引用。索引秒数与提示词末时点同步修改，每组时间从0开始。\n导入时选择外层章节或上传子目录，不选择素材组1或公共参考图。完整交付标准见插件内标准目录与AI交付规范.md。\n');
  let chapterIndex='# '+name+' 素材组索引\n\n|上传目录|组|请求秒数|提示词|\n|---|---|---|---|\n';
  for(let p=1;p<=pages;p++){
   const page=name+'_'+String(p).padStart(2,'0');entries.push({path:name+'/'+page+'/',directory:true});

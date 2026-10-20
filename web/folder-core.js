@@ -24,7 +24,12 @@
         }
       }
       const gi = parts.findIndex(x => /^素材组\d+$/.test(x));
-      if (/素材组索引\.md$/i.test(path)) indexes.set(parts.slice(0,-1).join('/'), await file.text());
+      if (/^素材(?:组)?索引\.md$/i.test(parts.at(-1))) {
+        const parent=parts.slice(0,-1).join('/');
+        const text=(await file.text()).replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n');
+        if(indexes.has(parent)&&indexes.get(parent)!==text)throw Error(`${parent}：素材索引.md与素材组索引.md内容不同，请保留一份明确的时长索引`);
+        indexes.set(parent,text);
+      }
       if (gi < 1) continue;
       const chapter = parts.slice(0,gi).join('/');
       const number = Number(parts[gi].match(/\d+/)[0]);
@@ -52,7 +57,7 @@
       const sharedImages=libraries.get(group.chapter);
       if (sharedImages && group.images.length) throw Error(`素材组${group.number}：已有公共参考图，请移除重复的组内参考图`);
       const availableImages=sharedImages || group.images;
-      if (!options.allowNoImages && !sharedImages && (!group.images.length || group.images.length > 9)) throw Error(`素材组${group.number}：参考图数量必须为1—9张`);
+      if (!options.allowNoImages && !sharedImages && (!group.images.length || group.images.length > 9)) throw Error(`${group.chapter}/素材组${group.number}：参考图数量必须为1—9张。当前是“参考素材”模式；如果目录只有提示词，请在导入模式中选择“自动人物生图 → 生视频”后重新选择目录；如需使用已有图片，请补充公共参考图/@图片1.png。`);
       group.images.forEach((f,i)=>{if(Number(f.name.match(/\d+/)[0])!==i+1) throw Error(`素材组${group.number}：图片需从@图片1连续编号，且不可重复`);});
       const refs = [...group.prompt.matchAll(/(?:<Picture\s+(\d+)>|@图片(\d+))/gi)].map(m=>Number(m[1]||m[2]));
       if (!options.allowNoImages && refs.some(n=>n<1||n>availableImages.length)) throw Error(`素材组${group.number}：提示词引用超出图片数量`);
@@ -69,7 +74,17 @@
       const videoRefs=[...group.prompt.matchAll(/(?:<Video\s+(\d+)>|@视频(\d+))/gi)].map(m=>Number(m[1]||m[2]));
       if(videoRefs.some(n=>n<1||n>sharedVideos.length)) throw Error("公共视频参考缺失");
       if(new Set(videoRefs).size>3) throw Error("单组参考视频最多3份");
-      const row = (indexes.get(group.chapter)||'').split(/\r?\n/).find(line=>new RegExp(`^\\|\\s*素材组${group.number}\\s*\\|`).test(line));
+      let indexText=indexes.get(group.chapter);
+      // An outer index is unambiguous only when it contains one upload page.
+      if(indexText===undefined){
+        const ancestors=group.chapter.split('/');
+        while(ancestors.length>1){ancestors.pop();const parent=ancestors.join('/');if(!indexes.has(parent))continue;
+          const pages=new Set([...groups.values()].filter(g=>g.chapter.startsWith(parent+'/')).map(g=>g.chapter));
+          if(pages.size===1)indexText=indexes.get(parent);
+          break;
+        }
+      }
+      const row = (indexText||'').split(/\r?\n/).find(line=>new RegExp(`^\\|\\s*素材组${group.number}\\s*\\|`).test(line));
       group.seconds = row ? Number(row.split('|')[2].trim()) : NaN;
       group.timeSource = row ? '素材组索引' : '提示词末时点';
       if (!row) {

@@ -1,16 +1,20 @@
 import {defaultImageSettings,videoWithCharacters} from './characters.mjs';
+import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];
 export const defaultProject = () => ({version:1,name:'未命名项目',mode:'reference',autoMerge:false,characters:[],imageSettings:defaultImageSettings(),commonPrompt:'',audioReference:false,
-  settings:{width:864,height:480,steps:8,seed:666,sampler:'res_multistep',scheduler:'simple'},
+  settings:{width:864,height:480,steps:8,seed:666,sampler:'res_multistep',scheduler:'simple',acceleration:'dmad4'},
   media:{images:[],audios:[],videos:[]},groups:[]});
 export function readProject(raw) {
   const base=defaultProject();
   const value=typeof raw==='string' ? JSON.parse(raw || '{}') : structuredClone(raw || {});
   if(!value || typeof value!=='object' || Array.isArray(value))throw Error('工程必须为JSON对象');
   const result={...base,...value,imageSettings:{...defaultImageSettings(),...value.imageSettings},settings:{...base.settings,...value.settings},media:{...base.media,...value.media}};
+  // Legacy saved projects without a preset keep their original sampling behavior.
+  if(value.settings && !Object.hasOwn(value.settings,'acceleration'))result.settings.acceleration='inherit';
   if(!['reference','auto_character'].includes(result.mode)||!Array.isArray(result.characters))throw Error('工作流模式或人物列表无效');
+  accelerationMode(result.settings);
   if(!Array.isArray(result.groups)||TAGS.some(([key])=>!Array.isArray(result.media[key])))throw Error('工程素材或分组格式错误');
   const ids=new Set();
   for(const g of result.groups){if(!g.id||ids.has(g.id))throw Error('分组ID缺失或重复');ids.add(g.id);}
@@ -74,7 +78,7 @@ function onlyAncestors(prompt,outputs){
 }
 export function compileRequest(base,project,group) {
   ({project,group}=videoWithCharacters(project,group));
-  const plan=planGroup(project,group),prompt=structuredClone(base);
+  const plan=planGroup(project,group),prompt=accelerateApi(base,project.settings),videoSettings=effectiveVideoSettings(project.settings);
   const entries=Object.entries(prompt);
   const targets=entries.filter(([,n])=>n.class_type==='MiniMaxH3ReferenceToVideo');
   if(targets.length!==1)throw Error('工作流需且只能包含一个官方 MiniMaxH3ReferenceToVideo 节点');
@@ -91,10 +95,10 @@ export function compileRequest(base,project,group) {
   plan.audios.forEach((row,i)=>{target.inputs[`ref_audios.ref_audio_${i}`]=[add('LoadAudio',{audio:row.file,audioUI:''}),0];});
   plan.videos.forEach((row,i)=>{const source=add('LoadVideo',{file:row.file});const components=add('GetVideoComponents',{video:[source,0]});target.inputs[`ref_videos.ref_video_${i}`]=[components,0];});
   for(const node of Object.values(prompt)){
-    if(node.class_type==='BasicScheduler')node.inputs.steps=project.settings.steps;
+    if(node.class_type==='BasicScheduler')node.inputs.steps=videoSettings.steps;
     if(node.class_type==='RandomNoise')node.inputs.noise_seed=project.settings.seed;
-    if(node.class_type==='KSamplerSelect')node.inputs.sampler_name=project.settings.sampler;
-    if(node.class_type==='BasicScheduler')node.inputs.scheduler=project.settings.scheduler;
+    if(node.class_type==='KSamplerSelect')node.inputs.sampler_name=videoSettings.sampler;
+    if(node.class_type==='BasicScheduler')node.inputs.scheduler=videoSettings.scheduler;
     if(node.class_type==='CreateVideo')node.inputs.fps=24;
   }
   const [saveId,save]=saves[0];
