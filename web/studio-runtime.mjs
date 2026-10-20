@@ -1,16 +1,16 @@
-import {mountFinishing,finishApi} from './finishing.mjs?v=0.6.0';
+import {mountFinishing,finishApi} from './finishing.mjs?v=0.6.3';
 import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.5.10';
 import {attachResourceEditor} from './resource-editor.mjs?v=0.5.8';
 import {openFolderTemplate} from './folder-template.mjs?v=0.5.8';
 import {livePreview} from './live-preview.mjs?v=0.5.8';
 import {modelDownloader} from './model-download.mjs?v=0.5.8';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.6.0';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.6.3';
 import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.5.8';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
 import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.5.8';
 import './folder-core.js?v=0.5.8';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.6.0';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.6.3';
 import {buildOfficialImport,verifyOfficialImport} from './official-import.mjs?v=0.5.8';
 
 const states=new WeakMap();
@@ -78,7 +78,7 @@ function attach(node){
  function log(text){$('status').textContent=text;}
  function setBusy(value){busy=value;$('add-page').disabled=value;$('delete-page').disabled=value;$('edit').disabled=value;for(const id of ['run','run-one','resume'])$(id).disabled=value;$('stop').disabled=!value;}
  function current(){return project.groups[selected];}
- const finishingController=mountFinishing({container:panels.finishing,api,getProject:()=>project,getGroup:current,persist,preview,view,log,isBusy:()=>busy,setBusy});
+ const finishingController=mountFinishing({container:panels.finishing,api,getProject:()=>project,getGroup:current,persist,preview,view,log,isBusy:()=>busy,setBusy,openModelDownloads:async()=>{showPanel('models');await downloader.show({missing:['models/upscale_models/RealESRGAN_x4.pth']});log('点击RealESRGAN_x4.pth旁的下载按钮，安装完成后返回视频精修与放大，刷新并选择模型。');}});
  function numberGroups(){project.groups.forEach((g,i)=>g.number=i+1);selected=Math.max(0,Math.min(selected,project.groups.length-1));}
  function render(){
   $('page-list').replaceChildren();

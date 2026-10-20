@@ -1,5 +1,14 @@
 [
   {
+    "key": "models/upscale_models/RealESRGAN_x4.pth",
+    "category": "upscale_models",
+    "name": "RealESRGAN_x4.pth",
+    "url": "https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x4.pth",
+    "source": "https://huggingface.co/ai-forever/Real-ESRGAN",
+    "size": null,
+    "sha256": null
+  },
+  {
     "key": "models/loras/dmad_minimax_h3_4step_full_critic_comfyui.safetensors",
     "category": "loras",
     "name": "dmad_minimax_h3_4step_full_critic_comfyui.safetensors",
