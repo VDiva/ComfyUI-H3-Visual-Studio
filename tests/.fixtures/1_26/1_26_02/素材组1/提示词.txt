@@ -1,0 +1,3 @@
+integrated_multimodal_description: 0.0～4.0秒：<Picture 1> 1_26_02 第1镜  <d>[Chinese] 你好。</d>
+overall_soundscape: 风声。
+non_diegetic_music: N/A

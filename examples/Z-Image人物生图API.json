@@ -1,0 +1,110 @@
+{
+  "201": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "z_image_turbo_bf16.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "202": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "lumina2",
+      "device": "default"
+    }
+  },
+  "203": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    }
+  },
+  "204": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "202",
+        0
+      ],
+      "text": "日本电视动画番剧角色设定图，清晰线稿，赛璐璐上色，人物身份与服装细节清楚，单个人物，全身或四分之三身，正面自然站姿，简洁中性灰背景。不要文字、水印、字幕、分镜拼贴或其他人物。\n人物：知夏（身份标识S3，标识不画在图中）。\n银色长发，蓝色眼睛，黑色制服，单人角色参考图。\n只描绘这一个人物。只输出画面，不写台词、姓名或说明文字。"
+    }
+  },
+  "205": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "204",
+        0
+      ]
+    }
+  },
+  "206": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": {
+      "width": 768,
+      "height": 1024,
+      "batch_size": 1
+    }
+  },
+  "207": {
+    "class_type": "ModelSamplingAuraFlow",
+    "inputs": {
+      "model": [
+        "201",
+        0
+      ],
+      "shift": 3
+    }
+  },
+  "208": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "207",
+        0
+      ],
+      "positive": [
+        "204",
+        0
+      ],
+      "negative": [
+        "205",
+        0
+      ],
+      "latent_image": [
+        "206",
+        0
+      ],
+      "seed": 3290,
+      "steps": 8,
+      "cfg": 1,
+      "sampler_name": "res_multistep",
+      "scheduler": "simple",
+      "denoise": 1
+    }
+  },
+  "209": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "208",
+        0
+      ],
+      "vae": [
+        "203",
+        0
+      ]
+    }
+  },
+  "210": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "209",
+        0
+      ],
+      "filename_prefix": "H3_Characters/人物示例/S3"
+    }
+  }
+}

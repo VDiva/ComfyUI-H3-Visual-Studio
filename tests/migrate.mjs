@@ -1,0 +1,5 @@
+import assert from 'node:assert/strict';
+import {migrateWorkflow,repairCurrentWorkflow} from '../web/migrate-workflow.mjs';
+const old={nodes:[{id:150,type:'ModelSamplingMiniMaxH3',widgets_values:[12,3],properties:{'Node name for S&R':'ModelSamplingMiniMaxH3'}},{id:151,type:'H3VisualProject',widgets_values:['saved pages']}],links:[[1,150,0,1,0,'MODEL']]};
+const fixed=structuredClone(old);assert.equal(migrateWorkflow(fixed),1);assert.equal(fixed.nodes[0].type,'MiniMaxH3SigmaShift');assert.deepEqual(fixed.nodes[0].widgets_values,[12,3]);assert.deepEqual(fixed.links,old.links);assert.deepEqual(fixed.nodes[1],old.nodes[1]);assert.equal(migrateWorkflow(fixed),0);
+let loaded,backup;assert.equal(await repairCurrentWorkflow({graph:{serialize:()=>old},loadGraphData:async data=>{loaded=data;}},{setItem:(key,value)=>{backup=JSON.parse(value);}}),1);assert.deepEqual(backup,old);assert.equal(loaded.nodes[0].type,'MiniMaxH3SigmaShift');console.log('PASS legacy sampler migration, idempotency, saved pages/parameters/links preserved and backup');

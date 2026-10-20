@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import {ensureWorkflow,isStudioWorkflow,BACKUP_KEY} from '../web/bootstrap.mjs';
+import {workflowTemplate} from '../web/workflow-template.mjs';
+let passed=0;
+const storage=()=>{const values=new Map();return {setItem:(k,v)=>values.set(k,v),getItem:k=>values.get(k)};};
+function appFor(before){return {loads:0,graph:{_nodes:structuredClone(before.nodes),serialize(){return {nodes:structuredClone(this._nodes),links:[]};}},async loadGraphData(data){this.loads++;this.graph._nodes=structuredClone(data.nodes);}};}
+const controller={importChapters(){}};
+const lookup=n=>n.type==='H3VisualProject'?controller:undefined;
+const empty=appFor({nodes:[]});const saved=storage();
+const created=await ensureWorkflow({app:empty,storage:saved,getController:lookup});
+assert.equal(created.created,true);assert.equal(empty.loads,1);assert.ok(isStudioWorkflow(empty.graph));assert.equal(JSON.parse(saved.getItem(BACKUP_KEY)).nodes.length,0);passed++;
+const reused=await ensureWorkflow({app:empty,storage:saved,getController:lookup});assert.equal(reused.created,false);assert.equal(empty.loads,1);passed++;
+const original={nodes:[{id:2,type:'PrimitiveInt',widgets_values:[123]}]};const other=appFor(original);const previous=storage();
+await ensureWorkflow({app:other,storage:previous,getController:lookup});assert.equal(JSON.parse(previous.getItem(BACKUP_KEY)).nodes[0].widgets_values[0],123);passed++;
+const blocked=appFor(original);await assert.rejects(()=>ensureWorkflow({app:blocked,storage:{setItem(){throw Error('quota');}},getController:lookup}),/quota/);assert.equal(blocked.loads,0);passed++;
+const broken=appFor(original);let fail=true;const load=broken.loadGraphData.bind(broken);broken.loadGraphData=async data=>{if(fail){fail=false;throw Error('load failed');}await load(data);};
+await assert.rejects(()=>ensureWorkflow({app:broken,storage:storage(),getController:lookup}),/load failed/);assert.equal(broken.graph._nodes[0].type,'PrimitiveInt');passed++;
+const missing=appFor(original);await assert.rejects(()=>ensureWorkflow({app:missing,storage:storage(),getController:()=>null,pause:async()=>{}}),/初始化失败/);assert.equal(missing.graph._nodes[0].type,'PrimitiveInt');passed++;
+const partial=appFor({nodes:[{id:1,type:'H3VisualProject',widgets_values:['{"custom":"saved pages"}']}]});await ensureWorkflow({app:partial,storage:storage(),getController:lookup});assert.equal(partial.graph._nodes.find(n=>n.type==='H3VisualProject').widgets_values[0],'{"custom":"saved pages"}');assert.equal(workflowTemplate.nodes.find(n=>n.type==='H3VisualProject').widgets_values[0].includes('custom'),false);passed++;
+console.log(JSON.stringify({passed,checks:'auto-create, reuse, backup, quota safety, load rollback, init rollback, saved-page preservation'}));
