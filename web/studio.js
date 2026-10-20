@@ -1,3 +1,4 @@
+import {attachResourceEditor} from './resource-editor.mjs';
 import {openFolderTemplate} from './folder-template.mjs';
 import {livePreview} from './live-preview.mjs';
 import {modelDownloader} from './model-download.mjs';
@@ -63,6 +64,8 @@ function attach(node){
  const settings=root.querySelector('details.settings');settings.open=true;panels.settings.append(settings,$('export'));
  const modelActions=document.createElement('div');modelActions.className='row';modelActions.append($('install-models'),$('check-models'));const modelHelp=document.createElement('p');modelHelp.className='muted';modelHelp.textContent='模型只需安装一次。下载在云端后台运行，可切回分段编辑继续操作。';panels.models.append(modelHelp,modelActions,$('model-downloads'));
  root.querySelector('.tools').remove();edit.replaceChildren(meta,...Object.values(panels));content.insertBefore(nav,edit);
+ const resourceEditor=attachResourceEditor({textarea:$('prompt'),getMedia:()=>project.media});
+ const commonResourceEditor=attachResourceEditor({textarea:$('common'),getMedia:()=>project.media});
  const preview=livePreview({api,image:$('live-image'),video:$('live-video'),label:$('live-label'),owns:id=>workspace.pages.some(p=>p.groups.some(g=>g.job?.promptId===id)||p.characters.some(c=>c.imageJob?.promptId===id))});
  let expanded=false,placeholder=null,oldHostStyle='',globalWasHidden=false;
  function toggleExpanded(force){const next=force??!expanded;if(next===expanded)return;expanded=next;if(expanded){const globalPanel=document.getElementById('h3-global-import');globalWasHidden=globalPanel?.hidden||false;if(globalPanel){globalPanel.hidden=true;globalPanel.style.visibility='hidden';}placeholder=document.createComment('h3-widget');host.before(placeholder);oldHostStyle=host.style.cssText;document.body.append(host);host.style.cssText='position:fixed;inset:1vh 1vw;width:98vw;height:98vh;z-index:2147483646;';$('expand').textContent='收起大面板（Esc）';}else{const globalPanel=document.getElementById('h3-global-import');if(globalPanel){globalPanel.hidden=globalWasHidden;globalPanel.style.visibility=globalWasHidden?'hidden':'';}if(placeholder?.parentNode)placeholder.replaceWith(host);host.style.cssText=oldHostStyle;$('expand').textContent='展开大面板';}}
@@ -75,7 +78,7 @@ function attach(node){
  function render(){
   $('page-list').replaceChildren();
   for(const page of workspace.pages){const button=document.createElement('button');button.className='page'+(page===project?' active':'');button.textContent=page.name;button.title=page.sourcePath||page.name;button.onclick=()=>{if(busy)return;project=page;workspace.activePageId=page.pageId;selected=0;syncSettings();persist();render();};$('page-list').append(button);}
-  numberGroups();$('mode').value=project.mode;$('character-panel').hidden=project.mode!=='auto_character';renderCharacters();$('name').value=project.name;$('common').value=project.commonPrompt;$('audio').checked=!!project.audioReference;
+  numberGroups();$('mode').value=project.mode;$('character-panel').hidden=project.mode!=='auto_character';renderCharacters();$('name').value=project.name;$('common').value=project.commonPrompt;commonResourceEditor.sync();$('audio').checked=!!project.audioReference;
   $('auto-merge').checked=project.autoMerge===true;
   $('counts').textContent=`${project.media.images.length}图 · ${project.media.audios.length}音频 · ${project.media.videos.length}视频`;
   $('summary').textContent=`${project.groups.length}组 · ${project.groups.reduce((n,g)=>n+Number(g.seconds||0),0).toFixed(1)}秒请求时长`;
@@ -94,7 +97,7 @@ function attach(node){
    const check=document.createElement('input');check.type='checkbox';check.checked=g.selected!==false;check.onclick=e=>e.stopPropagation();check.onchange=()=>{g.selected=check.checked;persist();};row.append(check);
    const text=document.createElement('div');const title=document.createElement('div');title.textContent=`素材组${g.number} · ${g.seconds}秒`;const status=document.createElement('div');status.className='meta';status.textContent=({queued:'已提交',done:'已完成',error:'失败'})[g.job?.state]||'待生成';text.append(title,status);row.append(text);row.onclick=()=>{selected=i;render();};$('groups').append(row);
   }
-  const g=current();$('group-title').textContent=g?`素材组 ${g.number}`:'尚无素材组';$('seconds').value=g?.seconds??4;$('prompt').value=g?.prompt||'';
+  const g=current();$('group-title').textContent=g?`素材组 ${g.number}`:'尚无素材组';$('seconds').value=g?.seconds??4;$('prompt').value=g?.prompt||'';resourceEditor.sync();
   for(const id of ['seconds','prompt','remove','up','down','export'])$(id).disabled=!g;
   $('result').replaceChildren();
   if(g){
@@ -296,7 +299,7 @@ function attach(node){
    const response=await send(number,{output:request.prompt,workflow},options);if(!response?.prompt_id)throw Error('服务器未返回任务ID');g.job={state:'queued',promptId:response.prompt_id};preview.watch(response.prompt_id);persist();render();log(`当前组已通过ComfyUI运行按钮提交：${response.prompt_id}；结果将自动更新。`);
    const queuedPageId=project.pageId;void waitJob(response.prompt_id).then(history=>{if(disposed||g.job?.promptId!==response.prompt_id)return;g.job.state=history.status?.status_str==='success'?'done':'error';g.job.videos=resultVideos(history);persist();if(project.pageId===queuedPageId){render();if(g.job.videos[0])preview.video(view({...g.job.videos[0],type:'output'}),'当前组视频已完成，可播放声音');}}).catch(error=>{if(!disposed)log('结果自动查询中断：'+error.message+'；可点击查询已提交任务。');});return response;
   }finally{setBusy(false);}
- },refresh(){try{workspace=readWorkspace(widget.value);project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;syncSettings();render();}catch(error){log('工程数据错误：'+error.message);}},dispose(){if(expanded)toggleExpanded(false);disposed=true;stop=true;downloader.dispose();preview.dispose();document.removeEventListener('keydown',escape);placeholder?.remove();host.remove();}};states.set(node,state);render();
+ },refresh(){try{workspace=readWorkspace(widget.value);project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;syncSettings();render();}catch(error){log('工程数据错误：'+error.message);}},dispose(){if(expanded)toggleExpanded(false);disposed=true;stop=true;downloader.dispose();resourceEditor.dispose();commonResourceEditor.dispose();preview.dispose();document.removeEventListener('keydown',escape);placeholder?.remove();host.remove();}};states.set(node,state);render();
 }
 app.registerExtension({name:'H3.Visual.Studio.Official',setup(){
  const send=api.queuePrompt.bind(api);
