@@ -1,6 +1,6 @@
 import {defaultImageSettings,videoWithCharacters} from './characters.mjs?v=0.5.7';
 import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.5.7';
-import {defaultFinishing,finishApi,isOriginalVideo} from './finishing.mjs?v=0.6.6';
+import {defaultFinishing,finishApi,isOriginalVideo} from './finishing.mjs?v=0.7.1';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];
@@ -13,6 +13,9 @@ export function readProject(raw) {
   if(!value || typeof value!=='object' || Array.isArray(value))throw Error('工程必须为JSON对象');
   const result={...base,...value,imageSettings:{...defaultImageSettings(),...value.imageSettings},settings:{...base.settings,...value.settings},media:{...base.media,...value.media}};
   // Missing presets adopt the current default; explicit saved choices remain unchanged.
+  const finishing={...defaultFinishing(),...value.finishing};
+  if(value.finishing?.defaultsVersion!==1)Object.assign(finishing,{defaultsVersion:1,refine:true,upscale:'latent',chunking:true,steps:4});
+  result.finishing=finishing;
   if(!['reference','auto_character'].includes(result.mode)||!Array.isArray(result.characters))throw Error('工作流模式或人物列表无效');
   accelerationMode(result.settings);
   if(!Array.isArray(result.groups)||TAGS.some(([key])=>!Array.isArray(result.media[key])))throw Error('工程素材或分组格式错误');

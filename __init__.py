@@ -20,6 +20,9 @@ from .frame_upscale import H3FrameUpscale,H3PreserveImages,H3PreserveLatent
 NODE_CLASS_MAPPINGS = {"H3VisualProject": H3VisualProject,"H3FrameUpscale":H3FrameUpscale,"H3PreserveImages":H3PreserveImages,"H3PreserveLatent":H3PreserveLatent}
 NODE_DISPLAY_NAME_MAPPINGS = {"H3VisualProject": "H3 可视化工作室（官方流程）","H3FrameUpscale":"H3 逐帧模型超分"}
 WEB_DIRECTORY = "./web"
+from .latent_upscale import H3DirectorLatentUpscale
+NODE_CLASS_MAPPINGS['H3DirectorLatentUpscale']=H3DirectorLatentUpscale
+NODE_DISPLAY_NAME_MAPPINGS['H3DirectorLatentUpscale']='H3 Director 3D latent放大'
 
 def register_video_processing():
     if PromptServer is None: return

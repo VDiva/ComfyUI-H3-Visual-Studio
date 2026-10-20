@@ -1,17 +1,17 @@
-import {mountFinishing,finishApi} from './finishing.mjs?v=0.6.6';
-import {executionProgress} from './execution-progress.mjs?v=0.6.6';
+import {mountFinishing,finishApi} from './finishing.mjs?v=0.7.1';
+import {executionProgress} from './execution-progress.mjs?v=0.7.1';
 import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.5.10';
 import {attachResourceEditor} from './resource-editor.mjs?v=0.5.8';
 import {openFolderTemplate} from './folder-template.mjs?v=0.5.8';
 import {livePreview} from './live-preview.mjs?v=0.5.8';
 import {modelDownloader} from './model-download.mjs?v=0.5.8';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.6.6';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.7.1';
 import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.5.8';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
 import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.5.8';
 import './folder-core.js?v=0.5.8';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.6.6';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.7.1';
 import {buildOfficialImport,verifyOfficialImport} from './official-import.mjs?v=0.5.8';
 
 const states=new WeakMap();
@@ -38,7 +38,7 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.6.0</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.7.1</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组官方工作流</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
@@ -82,7 +82,7 @@ function attach(node){
  const progressTracker=executionProgress({api,show:text=>{stepStatus.textContent='当前步骤：'+text;previewStep.textContent='当前步骤：'+text;}});
  function setBusy(value){busy=value;$('add-page').disabled=value;$('delete-page').disabled=value;$('edit').disabled=value;for(const id of ['run','run-one','resume'])$(id).disabled=value;$('stop').disabled=!value;}
  function current(){return project.groups[selected];}
- const finishingController=mountFinishing({container:panels.finishing,api,getProject:()=>project,getGroup:current,persist,preview,view,log,isBusy:()=>busy,setBusy,onQueued:(id,prompt)=>progressTracker.watch(id,prompt,'已有视频AI超分'),onFinished:id=>progressTracker.finish(id),openModelDownloads:async()=>{showPanel('models');await downloader.show({missing:['models/upscale_models/RealESRGAN_x4.pth']});log('点击RealESRGAN_x4.pth旁的下载按钮，安装完成后返回视频精修与放大，刷新并选择模型。');}});
+ const finishingController=mountFinishing({container:panels.finishing,api,getProject:()=>project,getGroup:current,persist,preview,view,log,isBusy:()=>busy,setBusy,onQueued:(id,prompt)=>progressTracker.watch(id,prompt,'已有视频AI超分'),onFinished:id=>progressTracker.finish(id),openModelDownloads:async()=>{showPanel('models');const key=project.finishing?.upscale==='latent'?'models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors':'models/upscale_models/RealESRGAN_x4.pth';await downloader.show({missing:[key]});log('点击模型旁的下载按钮，安装完成后返回视频精修与放大，刷新并选择模型。');}});
  function numberGroups(){project.groups.forEach((g,i)=>g.number=i+1);selected=Math.max(0,Math.min(selected,project.groups.length-1));}
  function render(){
   $('page-list').replaceChildren();
