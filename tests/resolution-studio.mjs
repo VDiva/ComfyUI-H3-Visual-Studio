@@ -1,0 +1,68 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import http from 'node:http';
+import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
+import assert from 'node:assert/strict';
+const require=createRequire(import.meta.url);
+const {chromium}=require(process.env.H3_PLAYWRIGHT_MODULE || 'C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const root=fileURLToPath(new URL('../',import.meta.url));
+const workflow=JSON.parse(await fs.readFile(path.join(root,'examples/官方可视化工作流.json'),'utf8'));
+const catalog=JSON.parse(await fs.readFile(path.join(root,'model-catalog.json'),'utf8'));let downloadedKeys=[],breakStudio=false;
+const base=JSON.parse(await fs.readFile(path.join(root,'examples/官方采样API基线.json'),'utf8'));
+let png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB2cAAAAASUVORK5CYII=','base64');
+let uploads=0,failUploads=false,missingModels=false;const requests=[];
+const html=`<!doctype html><html><meta charset="utf-8"><style>body{margin:0;padding:20px;background:#071019}#node{width:1000px;height:900px}</style><div id="node"></div><script>
+window.base=${JSON.stringify(base)};window.workflow=${JSON.stringify(workflow)};window.requests=[];
+const initialMode=new URL(location.href).searchParams.get('mode');
+if(initialMode==='empty')window.workflow={nodes:[],links:[],last_node_id:0,last_link_id:0,version:0.4};
+if(initialMode==='other')window.workflow={nodes:[{id:1,type:'PrimitiveInt',widgets_values:[123],inputs:[],outputs:[]}],links:[],last_node_id:1,last_link_id:0,version:0.4};
+window.loads=0;
+window.testApp={graph:{_nodes:[],setDirtyCanvas(){},serialize(){const w=structuredClone(window.workflow);const meta=w.nodes.find(n=>n.type==='H3VisualProject');if(meta&&window.node)meta.widgets_values=[window.node.widgets[0].value];return w;}},canvas:{},async graphToPrompt(){return {output:structuredClone(window.base),workflow:this.graph.serialize()};},registerExtension(ext){
+ if(!ext.beforeRegisterNodeDef){ext.setup?.();return;}
+ class Node{constructor(){this.widgets=[{name:'project_json',value:window.workflow.nodes.find(n=>n.type==='H3VisualProject').widgets_values[0]}];this.properties={};this.type='H3VisualProject';}addDOMWidget(name,type,el){document.querySelector('#node').append(el);return {};}setSize(){}setDirtyCanvas(){}}
+ ext.beforeRegisterNodeDef(Node,{name:'H3VisualProject'});
+ this.loadGraphData=async data=>{window.loads++;window.node?.onRemoved?.();window.node=null;document.querySelector('#node').replaceChildren();window.workflow=structuredClone(data);this.graph._nodes=window.workflow.nodes.filter(n=>n.type!=='H3VisualProject').map(n=>({...n}));const meta=window.workflow.nodes.find(n=>n.type==='H3VisualProject');if(meta){window.node=new Node();node.id=meta.id;this.graph._nodes.push(node);node.onNodeCreated();}};
+ this.loadGraphData(window.workflow);window.loads=0;ext.setup?.();
+}};
+window.testApi={apiURL:p=>p,fetchApi:(p,o)=>fetch(p,o),async queuePrompt(number,data){window.requests.push(data.output);const r=await fetch('/prompt',{method:'POST',body:JSON.stringify(data)});if(!r.ok)throw Error('queue failed');return r.json();}};
+window.LiteGraph={createNode(type){const types={LoadImage:['IMAGE','MASK'],LoadAudio:['AUDIO'],LoadVideo:['VIDEO'],GetVideoComponents:['IMAGE','AUDIO','FLOAT'],PrimitiveInt:['INT'],PrimitiveStringMultiline:['STRING']};const name={LoadImage:'image',LoadAudio:'audio',LoadVideo:'file',PrimitiveInt:'value',PrimitiveStringMultiline:'value'}[type];const widgets=name?[{name,value:''}]:[];return {widgets,serialize(){return {type,widgets_values:widgets.map(w=>w.value),properties:{},inputs:type==='GetVideoComponents'?[{name:'video',type:'VIDEO',link:null}]:[],outputs:types[type].map(type=>({name:type,type,links:[]}))};}};}};
+</script><script type="module" src="/extensions/h3/global-entry.js"></script></html>`;
+const server=http.createServer(async(req,res)=>{
+ try{
+ const url=new URL(req.url,'http://127.0.0.1');
+ if(url.pathname==='/'){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);return;}
+ if(url.pathname==='/scripts/app.js'||url.pathname==='/scripts/api.js'){res.setHeader('Content-Type','text/javascript');res.end(url.pathname.includes('app.js')?'export const app=window.testApp;':'export const api=window.testApi;');return;}
+ if(url.pathname.startsWith('/extensions/h3/')){if(breakStudio&&url.pathname.endsWith('/studio.js')){res.setHeader('Content-Type','text/javascript');res.end('throw Error("mock studio load failure");');return;}const f=path.join(root,'web',path.basename(url.pathname));res.setHeader('Content-Type','text/javascript; charset=utf-8');res.end(await fs.readFile(f));return;}
+ if(url.pathname==='/h3_visual_studio/models'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({catalog,jobs:{}}));return;}
+ if(url.pathname==='/h3_visual_studio/models/download'){let body='';for await(const chunk of req)body+=chunk;downloadedKeys=JSON.parse(body).keys;res.end(JSON.stringify({jobs:{}}));return;}
+ if(url.pathname==='/upload/image'){uploads++;for await(const chunk of req){}if(failUploads){res.statusCode=500;res.end('test upload failure');return;}res.setHeader('Content-Type','application/json');res.end(JSON.stringify({name:`uploaded${uploads}.png`,subfolder:'test',type:'input'}));return;}
+ if(url.pathname==='/prompt'){let body='';for await(const chunk of req)body+=chunk;requests.push(JSON.parse(body));res.setHeader('Content-Type','application/json');res.end(JSON.stringify({prompt_id:'job-'+requests.length}));return;}
+ if(url.pathname.startsWith('/history/')){const id=url.pathname.split('/').at(-1);res.setHeader('Content-Type','application/json');res.end(JSON.stringify({[id]:{status:{status_str:'success',completed:true},outputs:Object.values(requests[Number(id.split('-')[1])-1]?.output||{}).some(n=>n.class_type==='SaveImage')?{'210':{images:[{filename:'character.png',subfolder:'test',type:'output'}]}}:{'92':{images:[{filename:'clip.mp4',subfolder:'test',type:'output'}]}}}}));return;}
+ if(url.pathname==='/object_info'){const info={};for(const name of ['UNETLoader','CLIPLoader','VAELoader','CLIPTextEncode','ConditioningZeroOut','EmptySD3LatentImage','ModelSamplingAuraFlow','KSampler','VAEDecode','SaveImage'])info[name]={input:{required:{}}};info.UNETLoader.input.required.unet_name=[['z_image_turbo_bf16.safetensors']];info.CLIPLoader.input.required.clip_name=[['qwen_3_4b.safetensors']];info.VAELoader.input.required.vae_name=[['ae.safetensors']];for(const n of Object.values(base)){info[n.class_type]||={input:{required:{}}};for(const [key,value] of Object.entries(n.inputs||{})){if(['unet_name','clip_name','vae_name','lora_name'].includes(key)&&typeof value==='string'){const required=info[n.class_type].input.required;required[key]||=[[]];if(!required[key][0].includes(value))required[key][0].push(value);}}}if(info.LoraLoaderModelOnly)info.LoraLoaderModelOnly.input.required.lora_name[0].push('dmad_minimax_h3_4step_full_critic_comfyui.safetensors');if(missingModels)for(const n of Object.values(info))for(const [k,v] of Object.entries(n.input.required))if(Array.isArray(v?.[0]))v[0]=[];res.end(JSON.stringify(info));return;}
+ if(url.pathname==='/queue'){res.end(JSON.stringify({queue_pending:[],queue_running:[]}));return;}
+ if(url.pathname==='/view'){res.setHeader('Content-Type','image/png');res.end(png);return;}
+ res.statusCode=404;res.end('not found');
+ }catch(error){res.statusCode=500;res.end(error.message);}
+});
+await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+let browser;
+try{
+ browser=await chromium.launch({executablePath:process.env.H3_BROWSER_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+ const page=await browser.newPage({viewport:{width:1150,height:1100}});const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.log('BROWSER_ERROR',e.stack);});
+ await page.goto(`http://127.0.0.1:${server.address().port}`);await page.locator('#folder-input').waitFor({state:'attached'});
+
+ await page.locator('[data-panel="settings"]').click();
+ assert.equal(await page.locator('[data-setting="width"]').count(),0);
+ await page.locator('#video-resolution-mp').selectOption('0.2');
+ assert.match(await page.locator('#resolution-guide').textContent(),/608 × 320/);
+ assert.equal(await page.evaluate(()=>JSON.parse(window.node.widgets[0].value).pages[0].settings.width),608);
+ await page.locator('#video-resolution-aspect').selectOption('2.39:1');
+ assert.equal(await page.evaluate(()=>JSON.parse(window.node.widgets[0].value).pages[0].settings.height),288);
+ await page.locator('#add-page').click();
+ assert.equal(await page.locator('#video-resolution-mp').count(),1);
+ assert.deepEqual(errors,[]);
+ await page.locator('#expand').click();
+ await page.screenshot({path:path.join(root,'tests/百万像素设置预览.png')});
+ console.log('PASS full studio loads, MP controls save to workspace, guide updates, new page sync and no browser errors');
+}finally{await browser?.close();await new Promise(r=>server.close(r));}

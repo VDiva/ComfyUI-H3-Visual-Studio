@@ -1,4 +1,4 @@
-const loaders={UNETLoader:['unet_name','diffusion_models'],CLIPLoader:['clip_name','text_encoders'],DualCLIPLoader:['clip_name1','text_encoders','clip_name2'],VAELoader:['vae_name','vae'],LoraLoaderModelOnly:['lora_name','loras'],LoraLoader:['lora_name','loras']};
+const loaders={UNETLoader:['unet_name','diffusion_models'],CLIPLoader:['clip_name','text_encoders'],DualCLIPLoader:['clip_name1','text_encoders','clip_name2'],VAELoader:['vae_name','vae'],LoraLoaderModelOnly:['lora_name','loras'],LoraLoader:['lora_name','loras'],UpscaleModelLoader:['model_name','upscale_models']};
 export function modelReport(info,prompts){
  const missing=new Set(),nodes=new Set(),unknown=new Set(),checked=new Set();
  for(const prompt of prompts)for(const node of Object.values(prompt||{})){

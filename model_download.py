@@ -4,7 +4,21 @@ import time
 from collections import deque
 import urllib.error, urllib.parse, socket, errno, http.client
 import re, json, threading, concurrent.futures, urllib.request, hashlib, os, shutil
-CATALOG = json.loads((Path(__file__).parent / "model-catalog.json").read_text(encoding="utf-8"))
+BACKEND_VERSION = "0.5.7"
+CATALOG_PATH = Path(__file__).parent / "model-catalog.json"
+DMAD_MODEL = {
+    "key": "models/loras/dmad_minimax_h3_4step_full_critic_comfyui.safetensors",
+    "category": "loras", "name": "dmad_minimax_h3_4step_full_critic_comfyui.safetensors",
+    "url": "https://huggingface.co/ZhengmingYu/DMAD/resolve/main/minimax_h3/dmad_minimax_h3_4step_full_critic_comfyui.safetensors",
+    "source": "https://huggingface.co/ZhengmingYu/DMAD", "size": None, "sha256": None,
+}
+def load_catalog():
+    rows = json.loads(CATALOG_PATH.read_text(encoding="utf-8-sig"))
+    if not isinstance(rows, list): raise ValueError("模型下载清单必须是数组")
+    # Fixed, trusted fallback for installations whose external catalog predates DMAD.
+    rows = [row for row in rows if row.get("key") != DMAD_MODEL["key"]]
+    return [dict(DMAD_MODEL)] + rows
+CATALOG = load_catalog()
 def download_error(error, stage):
     prefix="["+stage+"] "
     if isinstance(error, urllib.error.HTTPError):
@@ -112,7 +126,7 @@ class Downloads:
         with self.lock: self.jobs[key].update(values)
     def start(self, keys):
         if not isinstance(keys,list) or not keys or len(keys)>32: raise ValueError("请选择模型")
-        catalog={m["key"]:m for m in CATALOG}
+        catalog={m["key"]:m for m in load_catalog()}
         if any(not isinstance(k,str) or k not in catalog for k in keys): raise ValueError("模型没有已核实的下载地址，不能自动下载")
         for key in dict.fromkeys(keys):
             with self.lock:

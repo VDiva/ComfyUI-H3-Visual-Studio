@@ -8,7 +8,7 @@
 
 ## 安装与使用
 
-1. 将最新版 `ComfyUI-H3-Visual-Studio_0.5.3_默认DMAD.zip` 解压到云电脑的 `ComfyUI`，覆盖其中同名 `custom_nodes/ComfyUI-H3-Visual-Studio`。重启ComfyUI，再强制刷新浏览器。本机源码更新不会自动部署到云端。
+1. 将最新版 `ComfyUI-H3-Visual-Studio_0.5.4_DMAD默认修复.zip` 解压到云电脑的 `ComfyUI`，覆盖其中同名 `custom_nodes/ComfyUI-H3-Visual-Studio`。重启ComfyUI，再强制刷新浏览器。本机源码更新不会自动部署到云端。
 2. 在面板“官方生成设置与公共提示词”选择“DMAD四步加速”。新旧页面各自保存该选项，要对每个需要加速的页面设置。
 3. 点击模型检查，或直接运行触发检查。在“模型下载”页签下载缺少的 `dmad_minimax_h3_4step_full_critic_comfyui.safetensors`，约2GB。下载由云端完成，并沿用原有版本固定、大小与SHA256校验。不要只把文件放在本机。
 4. 首次下载完成后，如下拉清单尚未刷新可重启ComfyUI。先用一个4—5秒素材组生成，确认速度、动作、对白与画质，再批量运行。

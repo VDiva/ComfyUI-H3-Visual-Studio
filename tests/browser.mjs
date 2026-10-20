@@ -103,6 +103,7 @@ try{
  await empty.locator('#h3-global-folder').setInputFiles(fixture);await empty.waitForFunction(oldId=>JSON.parse(node.widgets[0].value).pages[0].pageId!==oldId,oldImportedId);
  assert.deepEqual(await empty.locator('#page-list .page').allTextContents(),['1_26_01','1_26_02']);
  assert.equal(await empty.evaluate(()=>JSON.parse(node.widgets[0].value).pages.length),2,'repeat import replaces instead of appending');
+ assert.equal(await empty.evaluate(()=>JSON.parse(node.widgets[0].value).pages.every(p=>p.settings.acceleration==='dmad4')),true,'directory import must default every new page to DMAD4');
  assert.equal(await empty.evaluate(()=>JSON.parse(node.widgets[0].value).pages.some(p=>p.groups.some(g=>g.job))),false,'old result records removed');
  assert.equal(await empty.evaluate(()=>window.loads),1,'existing workflow reused without duplicate nodes');
  const other=await browser.newPage();await other.goto(`http://127.0.0.1:${server.address().port}/?mode=other`);await other.locator('#h3-global-folder').waitFor({state:'attached'});

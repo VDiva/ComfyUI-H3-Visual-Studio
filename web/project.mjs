@@ -1,9 +1,10 @@
-import {defaultImageSettings,videoWithCharacters} from './characters.mjs';
-import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs';
+import {defaultImageSettings,videoWithCharacters} from './characters.mjs?v=0.5.7';
+import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.5.7';
+import {defaultFinishing,finishApi,isOriginalVideo} from './finishing.mjs?v=0.6.0';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];
-export const defaultProject = () => ({version:1,name:'未命名项目',mode:'reference',autoMerge:false,characters:[],imageSettings:defaultImageSettings(),commonPrompt:'',audioReference:false,
+export const defaultProject = () => ({version:1,name:'未命名项目',mode:'reference',autoMerge:false,finishing:defaultFinishing(),characters:[],imageSettings:defaultImageSettings(),commonPrompt:'',audioReference:false,
   settings:{width:864,height:480,steps:8,seed:666,sampler:'res_multistep',scheduler:'simple',acceleration:'dmad4'},
   media:{images:[],audios:[],videos:[]},groups:[]});
 export function readProject(raw) {
@@ -11,8 +12,7 @@ export function readProject(raw) {
   const value=typeof raw==='string' ? JSON.parse(raw || '{}') : structuredClone(raw || {});
   if(!value || typeof value!=='object' || Array.isArray(value))throw Error('工程必须为JSON对象');
   const result={...base,...value,imageSettings:{...defaultImageSettings(),...value.imageSettings},settings:{...base.settings,...value.settings},media:{...base.media,...value.media}};
-  // Legacy saved projects without a preset keep their original sampling behavior.
-  if(value.settings && !Object.hasOwn(value.settings,'acceleration'))result.settings.acceleration='inherit';
+  // Missing presets adopt the current default; explicit saved choices remain unchanged.
   if(!['reference','auto_character'].includes(result.mode)||!Array.isArray(result.characters))throw Error('工作流模式或人物列表无效');
   accelerationMode(result.settings);
   if(!Array.isArray(result.groups)||TAGS.some(([key])=>!Array.isArray(result.media[key])))throw Error('工程素材或分组格式错误');
@@ -111,13 +111,14 @@ export function compileRequest(base,project,group) {
   if(videoNodes.length!==1)throw Error('官方保存链路需要一个CreateVideo');
   const source=result[String(videoNodes[0].inputs.audio?.[0])];
   if(source?.class_type!=='VAEDecodeAudio')throw Error('最终音轨必须连接官方VAEDecodeAudio，禁止参考音频直接作为成片原声');
-  return {prompt:result,plan};
+  return {prompt:finishApi(result,project.finishing,project.settings.width,project.settings.height),plan};
 }
 export function resultVideos(history) {
   const files=[];
   for(const output of Object.values(history?.outputs||{}))for(const key of ['images','videos','gifs'])for(const row of output?.[key]||[])if(/\.(mp4|webm|mov)$/i.test(row.filename||''))files.push(row);
-  return files;
+  return files.filter(row=>!isOriginalVideo(row));
 }
+export function originalVideos(history){const files=[];for(const output of Object.values(history?.outputs||{}))for(const key of ['images','videos','gifs'])for(const row of output?.[key]||[])if(/\.(mp4|webm|mov)$/i.test(row.filename||'')&&isOriginalVideo(row))files.push(row);return files;}
 export async function runSequential({groups,submit,wait,shouldStop=()=>false,onState=()=>{}}) {
   for(const group of groups){
     if(shouldStop())break;

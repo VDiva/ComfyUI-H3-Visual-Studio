@@ -7,7 +7,7 @@ import {compileCharacterImage} from '../web/characters.mjs';
 const base=JSON.parse(await fs.readFile(new URL('../examples/官方采样API基线.json',import.meta.url),'utf8'));
 const before=structuredClone(base);
 assert.equal(defaultProject().settings.acceleration,'dmad4');
-assert.equal(readProject({settings:{steps:8}}).settings.acceleration,'inherit');
+assert.equal(readProject({settings:{steps:8}}).settings.acceleration,'dmad4');
 assert.equal(readProject({settings:{acceleration:'inherit'}}).settings.acceleration,'inherit');
 assert.deepEqual(accelerateApi(base,{acceleration:'inherit'}),base);
 const p=defaultProject();p.media.images=[{id:1,file:'picture.png'}];const g={id:'test',number:1,seconds:4,prompt:'<Picture 1> 知夏(S3)说道：<d>[Chinese]你好。</d>'};p.groups=[g];

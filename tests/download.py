@@ -5,6 +5,7 @@ spec=importlib.util.spec_from_file_location("download",root/"model_download.py")
 content=b"test model data";digest=hashlib.sha256(content).hexdigest()
 model={"key":"models/vae/test.safetensors","category":"vae","name":"test.safetensors","url":"https://huggingface.co/owner/repo/resolve/main/test.safetensors","size":None,"sha256":None}
 m.CATALOG=[model]
+m.load_catalog=lambda:m.CATALOG
 def opener(request,timeout):
  if '/api/models/' in request.full_url:return io.BytesIO(json.dumps({"sha":"revision","siblings":[{"rfilename":"test.safetensors","size":len(content),"lfs":{"sha256":digest}}]}).encode())
  assert '/resolve/revision/' in request.full_url

@@ -1,4 +1,4 @@
-import {workflowTemplate} from './workflow-template.mjs';
+import {workflowTemplate} from './workflow-template.mjs?v=0.6.0';
 export const BACKUP_KEY='h3-visual-studio.before-auto-create.v1';
 const kind=n=>n.comfyClass||n.type;
 export function isStudioWorkflow(graph){
@@ -39,7 +39,7 @@ export function mountGlobalImporter({app,getController,parseFiles,download,prepa
  const backup=document.createElement('button');backup.textContent='下载创建前备份';
  for(const el of [restore,backup])el.style.cssText='background:#243746;color:#d7e6ee;border:1px solid #455e70;border-radius:6px;padding:5px 9px;cursor:pointer';
  button.title='新目录导入成功后替换全部现有页面；失败保留原工作区';
- const label=document.createElement('span');label.textContent='H3 工作室 · 导入入口 v0.5.3 · 导入替换工作区';label.style.cssText='color:white;background:#12222e;padding:3px 8px;border-radius:4px';
+ const label=document.createElement('span');label.textContent='H3 工作室 · 导入入口 v0.5.8 · 导入替换工作区';label.style.cssText='color:white;background:#12222e;padding:3px 8px;border-radius:4px';
  const options=document.createElement('details');options.id='h3-import-options';options.style.cssText='max-width:360px;background:#12222e;color:white;border-radius:6px;padding:4px';const summary=document.createElement('summary');summary.textContent='导入模式与备份';options.append(summary,mode,restore,backup,message);
  const launcher=document.createElement('button');launcher.id='h3-import-toggle';launcher.textContent='H3';launcher.title='H3工作室：导入、模型安装与目录工具';launcher.setAttribute('aria-expanded','false');launcher.style.cssText='width:42px;height:36px;background:#176d59;color:white;border:1px solid #55c9a8;border-radius:9px;cursor:pointer';
  const menu=document.createElement('div');menu.id='h3-import-menu';menu.style.cssText='display:none;flex-direction:column;align-items:stretch;gap:8px;padding:12px;background:#12222e;border:1px solid #426172;border-radius:10px;width:280px;max-width:calc(100vw - 30px);max-height:70vh;overflow:auto;box-shadow:0 12px 30px #0008';

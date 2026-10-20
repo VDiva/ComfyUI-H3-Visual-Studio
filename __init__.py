@@ -16,15 +16,36 @@ class H3VisualProject:
             raise ValueError("Project JSON must be an object")
         return (project_json,)
 
-NODE_CLASS_MAPPINGS = {"H3VisualProject": H3VisualProject}
-NODE_DISPLAY_NAME_MAPPINGS = {"H3VisualProject": "H3 可视化工作室（官方流程）"}
+from .frame_upscale import H3FrameUpscale,H3PreserveImages,H3PreserveLatent
+NODE_CLASS_MAPPINGS = {"H3VisualProject": H3VisualProject,"H3FrameUpscale":H3FrameUpscale,"H3PreserveImages":H3PreserveImages,"H3PreserveLatent":H3PreserveLatent}
+NODE_DISPLAY_NAME_MAPPINGS = {"H3VisualProject": "H3 可视化工作室（官方流程）","H3FrameUpscale":"H3 逐帧模型超分"}
 WEB_DIRECTORY = "./web"
+
+def register_video_processing():
+    if PromptServer is None: return
+    from aiohttp import web
+    import folder_paths
+    from .video_process import VideoJobs
+    jobs=VideoJobs(folder_paths.get_output_directory())
+    @PromptServer.instance.routes.post("/h3_visual_studio/process")
+    async def start_video_process(request):
+        try: return web.json_response(jobs.start(await request.json()))
+        except (ValueError,TypeError,OSError) as error: return web.json_response({"error":str(error)},status=400)
+    @PromptServer.instance.routes.get("/h3_visual_studio/process/{job_id}")
+    async def video_process_status(request):
+        try: return web.json_response(jobs.status(request.match_info["job_id"]))
+        except ValueError as error: return web.json_response({"error":str(error)},status=404)
+    @PromptServer.instance.routes.post("/h3_visual_studio/process/{job_id}/cancel")
+    async def cancel_video_process(request):
+        try: return web.json_response(jobs.cancel(request.match_info["job_id"]))
+        except ValueError as error: return web.json_response({"error":str(error)},status=404)
 
 # Optional only when imported inside a running ComfyUI server.
 try:
     from server import PromptServer
 except ImportError:
     PromptServer = None
+register_video_processing()
 if PromptServer is not None:
     import asyncio
     from aiohttp import web
@@ -45,7 +66,7 @@ if PromptServer is not None:
             return web.json_response({"error":"合并失败，请检查服务器日志及FFmpeg安装"}, status=500)
 
 if PromptServer is not None:
-    from .model_download import Downloads, CATALOG
+    from .model_download import Downloads, load_catalog, BACKEND_VERSION
     def model_directory(category):
         paths = folder_paths.get_folder_paths(category)
         return paths[0] if paths else str(__import__('pathlib').Path(folder_paths.models_dir) / category)
@@ -57,7 +78,7 @@ if PromptServer is not None:
 
     @PromptServer.instance.routes.get("/h3_visual_studio/models")
     async def model_download_status(request):
-        return web.json_response({"catalog": CATALOG, "jobs": downloads.status(), "proxy":downloads.proxy_info()})
+        return web.json_response({"catalog": load_catalog(), "backend_version": BACKEND_VERSION, "jobs": downloads.status(), "proxy":downloads.proxy_info()})
 
     @PromptServer.instance.routes.post("/h3_visual_studio/models/download")
     async def start_model_download(request):
