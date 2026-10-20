@@ -61,6 +61,7 @@ try{
  browser=await chromium.launch({executablePath:process.env.H3_BROWSER_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
  const page=await browser.newPage({viewport:{width:1150,height:1100}});const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.log('BROWSER_ERROR',e.stack);});
  await page.goto(`http://127.0.0.1:${server.address().port}`);await page.locator('#folder-input').waitFor({state:'attached'});
+ await page.locator('#create-folders').click();await page.locator('dialog[open]').waitFor({state:'visible'});assert.equal(await page.locator('dialog [name=pages]').inputValue(),'1');await page.locator('#close-template').click();
  await page.locator('#folder-input').setInputFiles(fixture);
  await page.waitForFunction(()=>JSON.parse(window.node.widgets[0].value).pages.length===2);
  assert.equal(await page.locator('#page-list .page').count(),2);
@@ -92,7 +93,7 @@ try{
  await page.locator('#expand').click();assert.equal(await page.locator('#expand').textContent(),'收起大面板（Esc）');assert.ok(await page.locator('#live-video').isVisible());await page.keyboard.press('Escape');assert.equal(await page.locator('#expand').textContent(),'展开大面板');
  failUploads=false;
  const empty=await browser.newPage();await empty.goto(`http://127.0.0.1:${server.address().port}/?mode=empty`);
- await empty.locator('#h3-global-folder').waitFor({state:'attached'});assert.equal(await empty.locator('#folder-input').count(),0);
+ await empty.locator('#h3-global-folder').waitFor({state:'attached'});assert.equal(await empty.locator('#folder-input').count(),0);assert.equal(await empty.locator('#h3-import-menu').isVisible(),false);await empty.locator('#h3-import-toggle').click();assert.equal(await empty.locator('#h3-import-menu').isVisible(),true);await empty.keyboard.press('Escape');assert.equal(await empty.locator('#h3-import-menu').isVisible(),false);await empty.locator('#h3-import-toggle').click();await empty.locator('body').click({position:{x:5,y:5}});assert.equal(await empty.locator('#h3-import-menu').isVisible(),false);
  await empty.locator('#h3-global-folder').setInputFiles(fixture);
  await empty.waitForFunction(()=>window.node&&JSON.parse(node.widgets[0].value).pages.length===2);
  assert.equal(await empty.evaluate(()=>window.loads),1,'empty canvas auto-creates the complete workflow once');
@@ -102,14 +103,14 @@ try{
  const other=await browser.newPage();await other.goto(`http://127.0.0.1:${server.address().port}/?mode=other`);await other.locator('#h3-global-folder').waitFor({state:'attached'});
  await other.locator('#h3-global-folder').setInputFiles(fixture);await other.waitForFunction(()=>window.node&&JSON.parse(node.widgets[0].value).pages.length===2);
  assert.equal(await other.evaluate(()=>JSON.parse(localStorage.getItem('h3-visual-studio.before-auto-create.v1')).nodes[0].widgets_values[0]),123);
- await other.locator('#h3-import-options summary').click();await other.locator('#h3-restore-workflow').click();await other.waitForFunction(()=>window.workflow.nodes.length===1&&window.workflow.nodes[0].type==='PrimitiveInt');
+ await other.locator('#h3-import-toggle').click();await other.locator('#h3-import-options summary').click();await other.locator('#h3-restore-workflow').click();await other.waitForFunction(()=>window.workflow.nodes.length===1&&window.workflow.nodes[0].type==='PrimitiveInt');
  assert.equal(await other.evaluate(()=>window.workflow.nodes[0].widgets_values[0]),123);
  failUploads=true;await other.locator('#h3-global-folder').setInputFiles(fixture);
  await other.waitForFunction(()=>document.querySelector('#h3-global-import').textContent.includes('导入未完成'));
  assert.equal(await other.evaluate(()=>window.workflow.nodes[0].type),'PrimitiveInt','failed upload restores replaced workflow');
  failUploads=false;await empty.close();await other.close();
  const auto=await browser.newPage({viewport:{width:1250,height:1400}});auto.on('pageerror',e=>errors.push(e.message));await auto.goto(`http://127.0.0.1:${server.address().port}/?mode=empty`);
- await auto.locator('#h3-import-options summary').click();await auto.locator('#h3-global-mode').selectOption('auto_character');await auto.locator('#h3-global-folder').setInputFiles(autoFixture);
+ await auto.locator('#h3-import-toggle').click();await auto.locator('#h3-import-options summary').click();await auto.locator('#h3-global-mode').selectOption('auto_character');await auto.locator('#h3-global-folder').setInputFiles(autoFixture);
  await auto.waitForFunction(()=>window.node&&JSON.parse(node.widgets[0].value).pages[0]?.mode==='auto_character');
  missingModels=true;const blockedStart=requests.length;await auto.locator('#run').click();await auto.waitForFunction(()=>document.querySelector('#node').firstChild.shadowRoot.querySelector('#status').textContent.includes('缺少模型'));
  const missingText=await auto.locator('#status').textContent();assert.ok(missingText.includes('z_image_turbo_bf16.safetensors'));assert.ok(missingText.includes('models/loras/'));assert.ok(missingText.includes('models/vae/'));assert.equal(requests.length,blockedStart,'missing models block both image and video requests');await auto.locator('#model-downloads button').filter({hasText:'下载全部缺失模型'}).click();await auto.waitForTimeout(100);assert.ok(downloadedKeys.some(k=>k.includes('z_image_turbo')));assert.ok(downloadedKeys.some(k=>k.includes('minimax_h3')));missingModels=false;
@@ -124,7 +125,7 @@ try{
  await page.evaluate(()=>{const ws=JSON.parse(node.widgets[0].value);for(const p of ws.pages)for(const g of p.groups)if(g.job)g.job.videos=[];node.widgets[0].value=JSON.stringify(ws);node.onConfigure();});
  await page.evaluate(()=>document.querySelector('#node').firstChild.shadowRoot.querySelector('#status').textContent='界面测试通过（模拟服务）；云端生成尚未验证。');
  await page.locator('[data-panel="shots"]').click();await page.setViewportSize({width:1110,height:720});await page.locator('#expand').click();await page.screenshot({path:path.join(root,'tests/新版工作区预览.png'),fullPage:false});await page.keyboard.press('Escape');
- const installer=await browser.newPage();await installer.goto(`http://127.0.0.1:${server.address().port}/?mode=empty`);missingModels=true;downloadedKeys=[];await installer.locator('#h3-global-install-models').click();await installer.waitForFunction(()=>window.node&&document.querySelector('#node').firstChild.shadowRoot.querySelector('#model-downloads').textContent.includes('models/'));for(let i=0;i<50&&!downloadedKeys.length;i++)await installer.waitForTimeout(50);assert.ok(downloadedKeys.some(k=>k.includes('minimax_h3')),'one click from blank canvas queues model installation');assert.equal(await installer.evaluate(()=>window.loads),1);missingModels=false;await installer.close();
- breakStudio=true;const broken=await browser.newPage();await broken.goto(`http://127.0.0.1:${server.address().port}/?mode=empty`);await broken.locator('#h3-global-import-button').waitFor({state:'visible'});await broken.waitForFunction(()=>document.querySelector('#h3-global-import').textContent.includes('mock studio load failure'));await broken.close();
+ const installer=await browser.newPage();await installer.goto(`http://127.0.0.1:${server.address().port}/?mode=empty`);missingModels=true;downloadedKeys=[];await installer.locator('#h3-import-toggle').click();await installer.locator('#h3-global-install-models').click();await installer.waitForFunction(()=>window.node&&document.querySelector('#node').firstChild.shadowRoot.querySelector('#model-downloads').textContent.includes('models/'));for(let i=0;i<50&&!downloadedKeys.length;i++)await installer.waitForTimeout(50);assert.ok(downloadedKeys.some(k=>k.includes('minimax_h3')),'one click from blank canvas queues model installation');assert.equal(await installer.evaluate(()=>window.loads),1);missingModels=false;await installer.close();
+ breakStudio=true;const broken=await browser.newPage();await broken.goto(`http://127.0.0.1:${server.address().port}/?mode=empty`);await broken.locator('#h3-import-toggle').waitFor({state:'visible'});await broken.locator('#h3-import-toggle').click();await broken.locator('#h3-global-import-button').waitFor({state:'visible'});await broken.waitForFunction(()=>document.querySelector('#h3-global-import').textContent.includes('mock studio load failure'));await broken.close();
  console.log(JSON.stringify({passed:true,pages:2,uploads,queuedRequests:requests.length,checks:'real browser directory import, page isolation, persistence, native queue payload, audio toggle, pure official export, standard Run, failed-import rollback, empty-canvas bootstrap, workflow reuse, backup restore and previews'}));
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}

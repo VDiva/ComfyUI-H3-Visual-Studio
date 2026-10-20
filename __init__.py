@@ -95,3 +95,13 @@ if PromptServer is not None:
         result=await asyncio.to_thread(downloads.auto_detect_proxy, True)
         proxy_config_path.write_text(json.dumps({"address":""}),encoding="utf-8")
         return web.json_response({"proxy":result})
+
+if PromptServer is not None:
+    from .folder_zip import template_zip
+    @PromptServer.instance.routes.post("/h3_visual_studio/template/zip")
+    async def download_folder_template(request):
+        try:
+            data=template_zip(await request.json())
+            return web.Response(body=data,content_type="application/zip",headers={"Content-Disposition":"attachment; filename=h3-folder-template.zip"})
+        except (ValueError,TypeError,AttributeError) as error:
+            return web.json_response({"error":str(error)},status=400)

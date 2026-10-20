@@ -40,12 +40,18 @@ export function mountGlobalImporter({app,getController,parseFiles,download,prepa
  for(const el of [restore,backup])el.style.cssText='background:#243746;color:#d7e6ee;border:1px solid #455e70;border-radius:6px;padding:5px 9px;cursor:pointer';
  const label=document.createElement('span');label.textContent='H3 工作室 · 导入入口 v0.4.1';label.style.cssText='color:white;background:#12222e;padding:3px 8px;border-radius:4px';
  const options=document.createElement('details');options.id='h3-import-options';options.style.cssText='max-width:360px;background:#12222e;color:white;border-radius:6px;padding:4px';const summary=document.createElement('summary');summary.textContent='导入模式与备份';options.append(summary,mode,restore,backup,message);
- panel.append(label,button,install,options,input);document.body.append(panel);
+ const launcher=document.createElement('button');launcher.id='h3-import-toggle';launcher.textContent='H3';launcher.title='H3工作室：导入、模型安装与目录工具';launcher.setAttribute('aria-expanded','false');launcher.style.cssText='width:42px;height:36px;background:#176d59;color:white;border:1px solid #55c9a8;border-radius:9px;cursor:pointer';
+ const menu=document.createElement('div');menu.id='h3-import-menu';menu.style.cssText='display:none;flex-direction:column;align-items:stretch;gap:8px;padding:12px;background:#12222e;border:1px solid #426172;border-radius:10px;width:280px;max-width:calc(100vw - 30px);max-height:70vh;overflow:auto;box-shadow:0 12px 30px #0008';
+ menu.append(label,button,install,options);panel.append(launcher,menu,input);document.body.append(panel);
+ function setOpen(open){menu.style.display=open?'flex':'none';launcher.setAttribute('aria-expanded',String(open));}
+ launcher.onclick=()=>setOpen(launcher.getAttribute('aria-expanded')!=='true');
+ document.addEventListener('pointerdown',event=>{if(!panel.contains(event.target))setOpen(false);});
+ document.addEventListener('keydown',event=>{if(event.key==='Escape')setOpen(false);});
  let busy=false;
- const status=text=>{message.textContent=text;message.style.display='block';};
+ const status=text=>{message.textContent=text;message.style.display='block';launcher.title='H3工作室：'+text;};
  function sync(){let exists=false;try{exists=!!storage.getItem(BACKUP_KEY);}catch{}restore.hidden=!exists;backup.hidden=!exists;button.disabled=busy;install.disabled=busy;mode.disabled=busy;restore.disabled=busy;backup.disabled=busy;}
  install.onclick=async()=>{if(busy)return;busy=true;sync();try{await prepare();const ready=await ensureWorkflow({app,storage,getController});status('已打开工作室，正在检查并安装所需模型。下载进度见工作室面板。');await ready.controller.installModels();}catch(error){status('安装未完成：'+error.message);}finally{busy=false;sync();}};
- button.onclick=()=>{if(!busy)input.click();};
+ button.onclick=()=>{if(!busy){input.click();setOpen(false);}};
  input.onchange=async()=>{
   if(busy)return;
   const files=[...input.files];if(!files.length)return;

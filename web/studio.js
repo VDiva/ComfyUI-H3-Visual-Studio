@@ -1,3 +1,4 @@
+import {openFolderTemplate} from './folder-template.mjs';
 import {livePreview} from './live-preview.mjs';
 import {modelDownloader} from './model-download.mjs';
 import {modelReport,reportText,assertModels} from './model-check.mjs';
@@ -50,7 +51,7 @@ function attach(node){
  const $=id=>root.querySelector('#'+id);
  // Reuse the same controls and handlers, but separate editing from maintenance.
  const edit=$('edit'),content=root.querySelector('.content'),head=root.querySelector('.head');
- const fileActions=document.createElement('div');fileActions.className='file-actions';fileActions.append($('folder'),$('open'),$('save'));head.insertBefore(fileActions,$('expand'));
+ const fileActions=document.createElement('div');fileActions.className='file-actions';fileActions.append($('folder'),$('open'),$('save'));const createFolders=document.createElement('button');createFolders.id='create-folders';createFolders.textContent='创建标准目录';createFolders.onclick=()=>openFolderTemplate({root,api,mode:project.mode,log});fileActions.prepend(createFolders);head.insertBefore(fileActions,$('expand'));
  const meta=document.createElement('div');meta.className='page-meta';meta.append($('name').closest('.row'),$('mode').closest('.row'));
  const nav=document.createElement('nav');nav.className='workspace-tabs';nav.setAttribute('aria-label','工作区');
  const panels={};let activePanel='shots';
