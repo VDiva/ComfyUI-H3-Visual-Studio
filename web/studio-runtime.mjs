@@ -1,17 +1,17 @@
-import {mountFinishing,finishApi} from './finishing.mjs?v=0.6.5';
-import {executionProgress} from './execution-progress.mjs?v=0.6.5';
+import {mountFinishing,finishApi} from './finishing.mjs?v=0.6.6';
+import {executionProgress} from './execution-progress.mjs?v=0.6.6';
 import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.5.10';
 import {attachResourceEditor} from './resource-editor.mjs?v=0.5.8';
 import {openFolderTemplate} from './folder-template.mjs?v=0.5.8';
 import {livePreview} from './live-preview.mjs?v=0.5.8';
 import {modelDownloader} from './model-download.mjs?v=0.5.8';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.6.5';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.6.6';
 import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.5.8';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
 import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.5.8';
 import './folder-core.js?v=0.5.8';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.6.5';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.6.6';
 import {buildOfficialImport,verifyOfficialImport} from './official-import.mjs?v=0.5.8';
 
 const states=new WeakMap();
@@ -78,7 +78,8 @@ function attach(node){
  const persist=()=>{widget.value=JSON.stringify(workspace);node.setDirtyCanvas?.(true,true);};
  function log(text){$('status').textContent=text;}
  const stepStatus=document.createElement('div');stepStatus.className='status';stepStatus.style.cssText='white-space:pre-wrap;flex-shrink:0';stepStatus.textContent='当前步骤：等待任务';stepStatus.setAttribute('role','status');$('status').before(stepStatus);
- const progressTracker=executionProgress({api,show:text=>{stepStatus.textContent='当前步骤：'+text;}});
+ const previewStep=document.createElement('div');previewStep.style.cssText='white-space:pre-wrap;color:#8aefcf;font-weight:600;padding:8px 0';previewStep.textContent='当前步骤：等待任务';$('live-label').before(previewStep);
+ const progressTracker=executionProgress({api,show:text=>{stepStatus.textContent='当前步骤：'+text;previewStep.textContent='当前步骤：'+text;}});
  function setBusy(value){busy=value;$('add-page').disabled=value;$('delete-page').disabled=value;$('edit').disabled=value;for(const id of ['run','run-one','resume'])$(id).disabled=value;$('stop').disabled=!value;}
  function current(){return project.groups[selected];}
  const finishingController=mountFinishing({container:panels.finishing,api,getProject:()=>project,getGroup:current,persist,preview,view,log,isBusy:()=>busy,setBusy,onQueued:(id,prompt)=>progressTracker.watch(id,prompt,'已有视频AI超分'),onFinished:id=>progressTracker.finish(id),openModelDownloads:async()=>{showPanel('models');await downloader.show({missing:['models/upscale_models/RealESRGAN_x4.pth']});log('点击RealESRGAN_x4.pth旁的下载按钮，安装完成后返回视频精修与放大，刷新并选择模型。');}});

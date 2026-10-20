@@ -15,4 +15,10 @@ send('executing',{prompt_id:'ours',node:'4'});assert.match(text,/执行节点 4/
 tracker.finish('ours');const before=text;send('progress',{value:5,max:10});assert.equal(text,before);
 tracker.watch('next',{'4':{class_type:'SaveVideo'}});send('executing',{prompt_id:'next',node:'4'});assert.match(text,/保存视频/);
 tracker.dispose();const final=text;send('executing',{prompt_id:'next',node:'3'});assert.equal(text,final);
-console.log('PASS stage names, progress, prompt isolation, queue refresh and listener cleanup');
+const late=executionProgress({api,show:value=>text=value});
+send('executing',{prompt_id:'fast',node:'5'});
+late.watch('fast',{'5':{class_type:'VAEDecode'}});assert.match(text,/解码图像帧/);
+send('progress',{prompt_id:'fast',node:'6',value:1,max:4});assert.match(text,/执行节点 6/);
+send('executing',{node:'5'});assert.match(text,/解码图像帧/);
+late.dispose();
+console.log('PASS stage names, early execution replay, progress recovery, legacy events, isolation and cleanup');

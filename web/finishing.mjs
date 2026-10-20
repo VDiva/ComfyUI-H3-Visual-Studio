@@ -1,5 +1,5 @@
-import {MEGAPIXELS} from './resolution.mjs?v=0.6.5';
-import {modelReport,assertModels,modelChoices} from './model-check.mjs?v=0.6.5';
+import {MEGAPIXELS} from './resolution.mjs?v=0.6.6';
+import {modelReport,assertModels,modelChoices} from './model-check.mjs?v=0.6.6';
 export const defaultFinishing=()=>({refine:false,steps:8,denoise:0.15,passes:1,upscale:'model',megapixels:1,model:'RealESRGAN_x4.pth'});
 export function finishingSettings(raw={}){
  const s={...defaultFinishing(),...raw};
