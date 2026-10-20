@@ -1,6 +1,6 @@
 import {defaultImageSettings,videoWithCharacters} from './characters.mjs?v=0.5.7';
 import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.5.7';
-import {defaultFinishing,finishApi,isOriginalVideo} from './finishing.mjs?v=0.6.3';
+import {defaultFinishing,finishApi,isOriginalVideo} from './finishing.mjs?v=0.6.5';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];

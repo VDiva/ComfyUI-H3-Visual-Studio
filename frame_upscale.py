@@ -36,7 +36,16 @@ class H3FrameUpscale:
             if width<images.shape[2] or height<images.shape[1]: raise ValueError("目标小于原视频，请提高目标MP")
         if not len(images) or width%32 or height%32 or width<32 or height<32 or width>4096 or height>4096:
             raise ValueError("无效的超分目标尺寸或空视频")
+        import time
+        from server import PromptServer
+        from comfy_execution.utils import get_executing_context
+        context=get_executing_context()
+        started=time.monotonic()
+        def report_frames(done):
+            if context is not None:
+                PromptServer.instance.send_sync("h3_frame_progress", {"prompt_id":context.prompt_id,"node":context.node_id,"value":done,"max":len(images),"elapsed":time.monotonic()-started})
         result=[]
+        report_frames(0)
         node=ImageUpscaleWithModel()
         for i in range(len(images)):
             comfy.model_management.throw_exception_if_processing_interrupted()
@@ -44,4 +53,5 @@ class H3FrameUpscale:
             value=value.args[0] if hasattr(value,"args") else value[0]
             value=comfy.utils.common_upscale(value.movedim(-1,1),width,height,"lanczos","disabled").movedim(1,-1)
             result.append(value.clamp(0,1).cpu())
+            report_frames(i+1)
         return (torch.cat(result,dim=0),)

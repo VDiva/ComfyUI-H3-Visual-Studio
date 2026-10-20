@@ -1,2 +1,2 @@
 // Compatibility entry; all callers share one versioned runtime.
-export {controllerForNode} from './studio-runtime.mjs?v=0.6.3';
+export {controllerForNode} from './studio-runtime.mjs?v=0.6.5';

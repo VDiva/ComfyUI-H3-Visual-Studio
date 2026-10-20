@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {executionProgress} from '../web/execution-progress.mjs';
+const api=new EventTarget();let text='';const tracker=executionProgress({api,show:value=>text=value});
+const send=(name,detail)=>api.dispatchEvent(new CustomEvent(name,{detail}));
+tracker.watch('ours',{'3':{class_type:'H3FrameUpscale'},'4':{class_type:'SaveVideo'}},'素材组1');
+assert.match(text,/排队/);
+send('executing',{prompt_id:'other',node:'3'});assert.match(text,/排队/);
+send('executing',{prompt_id:'ours',node:'3'});assert.match(text,/AI模型超分/);
+send('progress',{prompt_id:'other',node:'3',value:9,max:10});assert.doesNotMatch(text,/90%/);
+send('h3_frame_progress',{prompt_id:'ours',node:'3',value:3,max:10,elapsed:30});assert.match(text,/30%/);assert.match(text,/3\/10 帧/);
+send('progress',{prompt_id:'ours',node:'3',value:1,max:2});assert.match(text,/30%/);
+send('progress',{prompt_id:'ours',node:'3',value:2,max:2});assert.match(text,/30%/);
+tracker.watch('ours',{'3':{class_type:'H3FrameUpscale'}});assert.match(text,/30%/);
+send('executing',{prompt_id:'ours',node:'4'});assert.match(text,/执行节点 4/);
+tracker.finish('ours');const before=text;send('progress',{value:5,max:10});assert.equal(text,before);
+tracker.watch('next',{'4':{class_type:'SaveVideo'}});send('executing',{prompt_id:'next',node:'4'});assert.match(text,/保存视频/);
+tracker.dispose();const final=text;send('executing',{prompt_id:'next',node:'3'});assert.equal(text,final);
+console.log('PASS stage names, progress, prompt isolation, queue refresh and listener cleanup');
