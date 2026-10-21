@@ -1,4 +1,4 @@
-# H3 可视化工作室 0.14.2
+# H3 可视化工作室 0.14.4
 
 使用 AIMixer / MiniMax H3 Director 开源内核，保留工作室的分段编辑、目录导入、公共素材、人物生图、后台批次、对比、视频处理和更新界面。
 
@@ -7,6 +7,10 @@
 1. 将完整目录放入 ComfyUI/custom_nodes。
 2. 使用 ComfyUI 的 Python 安装 requirements.txt，重启 ComfyUI 并 Ctrl+F5。
 3. 进入工作室，在“模型与下载”检查模型和依赖，然后使用工作室的生成按钮。
+
+插件源码与在线更新源为 [VDiva/ComfyUI-H3-Visual-Studio](https://github.com/VDiva/ComfyUI-H3-Visual-Studio)。更新器读取该仓库默认分支，并下载检查时锁定的提交。
+
+模型下载优先直连仙宫云hf.x-gpu.com，以首次模型信息请求检测可用性（8秒连接/读取超时）。正常下载使用60秒连接/读取超时；线路不可用、模型信息无效、传输失败或SHA256校验失败时自动切换Hugging Face来源站点。切换后本次任务继续使用官方线路，沿用代理配置；仙宫云不会收到HF Token。支持断点续传，安装前仍校验大小和SHA256。
 
 源码包不附带FFmpeg二进制。视频合并和后处理使用服务器已安装的FFmpeg，或依赖页安装的imageio-ffmpeg。其许可证由各自发行方提供。
 
@@ -29,3 +33,5 @@
 ## 文件说明
 
 根目录的model-catalog.json用于模型下载，version.json用于插件更新，均为运行必需文件。web/workflow-template.mjs是内置启动模板；tests/.fixtures中的JSON仅供测试。旧版工作流导出、历史说明、调研和旧FFmpeg构建说明已移出插件；不再附带examples目录。标准目录与AI交付规范.md由目录模板引用，予以保留。
+
+0.14.4补回并保留Git中的两份测试JSON；源码完整性检查允许Git换行转换；更新包校验涵盖Director清单内的Python文件、适配器、关键前端和许可证。前端模块引用可用 `node --experimental-vm-modules tests/module-links.mjs` 单独检查。

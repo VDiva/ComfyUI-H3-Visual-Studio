@@ -2,12 +2,16 @@
 from pathlib import Path, PurePosixPath
 import copy, hashlib, io, json, os, re, shutil, stat, threading, time, urllib.error, urllib.parse, urllib.request, uuid, zipfile
 
-REPOSITORY="VDiva/MiniMaxH3Plugin"
+REPOSITORY="VDiva/ComfyUI-H3-Visual-Studio"
 PROJECT="ComfyUI-H3-Visual-Studio"
 STATE_FILE=".h3-update-state.json"
 MAX_ARCHIVE=512*1024**2
 MAX_UNPACKED=1536*1024**2
-REQUIRED=("__init__.py","version.json","web/studio-runtime.mjs","web/global-entry.js","model-catalog.json")
+REQUIRED=("__init__.py","version.json","web/studio-runtime.mjs","web/global-entry.js","model-catalog.json",
+          "director_bridge.py","requirements.txt","web/project.mjs","web/director-core.mjs","web/workflow-template.mjs",
+          "LICENSE","NOTICE","NOTICE-Director.md","director_core/LICENSE","director_core/__init__.py",
+          "director_core/source-manifest.json","director_core/source-normalized-manifest.json",
+          "director_core/nodes/director.py","director_core/director/executor_core.py")
 
 def version_tuple(value):
     if not isinstance(value,str) or not re.fullmatch(r"\d+\.\d+\.\d+",value):raise ValueError("version.json版本必须为数字格式，如0.13.0")
@@ -20,6 +24,7 @@ def manifest(data):
 
 def preserved(name):
     parts=PurePosixPath(name).parts
+    if len(parts)==3 and parts[:2]==('tests','.fixtures') and parts[2] in {'官方采样API基线.json','官方可视化工作流.json'}:return False
     return not parts or any(p.startswith('.') or p in {"__pycache__","models","input","output","user","venv","node_modules"} for p in parts) or parts[0]=="download-proxy.json" or parts[-1].endswith('.local.json')
 
 def unpack(data,destination,subdir):
@@ -55,7 +60,15 @@ def unpack(data,destination,subdir):
             managed.append(name)
     if any(not (destination/name).is_file() for name in REQUIRED):raise ValueError("更新包缺少插件源码、web目录或version.json，请上传完整插件")
     info=manifest(json.loads((destination/'version.json').read_text(encoding='utf-8-sig')))
-    for path in destination.glob('*.py'):compile(path.read_text(encoding='utf-8-sig'),str(path),'exec')
+    sources=json.loads((destination/'director_core/source-manifest.json').read_text(encoding='utf-8-sig'))
+    if not isinstance(sources,dict) or not sources:raise ValueError("更新包缺少Director源码清单")
+    for name in sources:
+        if not isinstance(name,str) or '\\' in name or ':' in name:raise ValueError("Director源码清单路径无效")
+        relative=PurePosixPath(name)
+        target=(destination/'director_core'/name).resolve()
+        if relative.is_absolute() or '..' in relative.parts or not name.endswith('.py') or not target.is_relative_to((destination/'director_core').resolve()):raise ValueError("Director源码清单路径无效")
+        if not target.is_file():raise ValueError("更新包缺少Director源码："+name)
+    for path in destination.rglob('*.py'):compile(path.read_text(encoding='utf-8-sig'),str(path),'exec')
     catalog=json.loads((destination/'model-catalog.json').read_text(encoding='utf-8-sig'))
     if not isinstance(catalog,list):raise ValueError("更新包模型清单无效")
     return info,managed

@@ -14,5 +14,5 @@ with tempfile.TemporaryDirectory() as temp:
     assert other in m.load_catalog(), 'catalog must reload after disk update'
     m.CATALOG_PATH.write_text(json.dumps([dict(m.DMAD_MODEL,url='https://invalid.example')]),encoding='utf-8')
     assert m.load_catalog()==[m.DMAD_MODEL], 'DMAD fallback must use trusted fixed URL without duplicates'
-assert m.BACKEND_VERSION=='0.5.8'
+assert m.BACKEND_VERSION=='0.5.9'
 print('PASS real DMAD catalog key/URL, old catalog fallback, disk reload, deduplication and backend version')

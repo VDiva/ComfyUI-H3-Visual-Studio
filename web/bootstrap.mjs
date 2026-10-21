@@ -1,4 +1,4 @@
-import {workflowTemplate} from './workflow-template.mjs?v=0.14.1';
+import {workflowTemplate} from './workflow-template.mjs?v=0.14.4';
 export const BACKUP_KEY='h3-visual-studio.before-auto-create.v1';
 const kind=n=>n.comfyClass||n.type;
 export function isStudioWorkflow(graph){

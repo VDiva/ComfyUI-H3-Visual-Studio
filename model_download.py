@@ -4,7 +4,7 @@ import time
 from collections import deque
 import urllib.error, urllib.parse, socket, errno, http.client, ssl
 import re, json, threading, concurrent.futures, urllib.request, hashlib, os, shutil
-BACKEND_VERSION = "0.5.8"
+BACKEND_VERSION = "0.5.9"
 CATALOG_PATH = Path(__file__).parent / "model-catalog.json"
 DMAD_MODEL = {
     "key": "models/loras/dmad_minimax_h3_4step_full_critic_comfyui.safetensors",
@@ -104,27 +104,31 @@ class Downloads:
             }) or isinstance(error, ssl.SSLError)
 
     def open_source(self, request, key, timeout=60):
-        # Official requests retain the configured proxy. The cloud-only mirror
-        # must bypass all environment/system proxies and never receive HF_TOKEN.
+        # Try the cloud mirror directly first; only official requests use proxy
+        # detection and HF credentials. The first real request is the probe.
         parsed=urllib.parse.urlsplit(request.full_url)
         if parsed.scheme != "https" or parsed.netloc != "huggingface.co":
             return self.opener(request, timeout=timeout)
         with self.lock:
-            internal=self.jobs[key].get("download_source")=="xiangongyun"
-        if not internal:
-            self.update(key, download_source="official")
+            official=self.jobs[key].get("download_source")=="official"
+            available=self.jobs[key].get("mirror_available",False)
+        if not official:
+            self.update(key, download_source="xiangongyun")
+            url=urllib.parse.urlunsplit(("http", "hf.x-gpu.com", parsed.path, parsed.query, ""))
+            headers={k:v for k,v in request.header_items()
+                     if k.lower() not in {"authorization", "proxy-authorization", "cookie"}}
             try:
-                return self.opener(request, timeout=timeout)
+                response=self.internal_opener(urllib.request.Request(url, headers=headers,
+                                             method=request.get_method()), timeout=timeout if available else min(timeout,8))
+                self.update(key,mirror_available=True)
+                return response
             except Exception as error:
-                if not self.source_failure(error):
+                if not (self.source_failure(error) or isinstance(error,urllib.error.HTTPError)):
                     raise
-                self.update(key, download_source="xiangongyun",
-                            error="官方请求失败，尝试仙宫云内网线路")
-        url=urllib.parse.urlunsplit(("http", "hf.x-gpu.com", parsed.path, parsed.query, ""))
-        headers={k:v for k,v in request.header_items()
-                 if k.lower() not in {"authorization", "proxy-authorization", "cookie"}}
-        return self.internal_opener(urllib.request.Request(url, headers=headers,
-                                    method=request.get_method()), timeout=timeout)
+                self.update(key, download_source="official",
+                            error="仙宫云线路不可用，切换Hugging Face官方源")
+        self.auto_detect_proxy()
+        return self.opener(request, timeout=timeout)
 
     def configure_proxy(self, address):
         if not isinstance(address,str): raise ValueError("代理地址格式错误")
@@ -173,7 +177,7 @@ class Downloads:
                 self.jobs[key]={"state":"queued","bytes":0,"total":catalog[key]["size"],"error":""}
             self.pool.submit(self.run,catalog[key])
         return self.status()
-    def run(self, model):
+    def run(self, model, _official=False):
         key=model["key"];part=None;stage="准备目录"
         try:
             root=Path(self.directory(model["category"])).resolve();root.mkdir(parents=True,exist_ok=True)
@@ -185,17 +189,21 @@ class Downloads:
             headers={"User-Agent":"H3-Visual-Studio"}
             token=os.environ.get("HF_TOKEN")
             if token: headers["Authorization"]="Bearer "+token
-            self.update(key,state="connecting",download_source="official")
-            stage="自动检测下载代理"
-            self.auto_detect_proxy()
+            self.update(key,state="connecting",download_source="official" if _official else "xiangongyun",mirror_available=False)
             # Resolve exact repository metadata in the cloud, where download happens.
             repo, filepath = model["url"].split("https://huggingface.co/",1)[1].split("/resolve/main/",1)
             stage="获取模型信息"
-            with self.open_source(urllib.request.Request("https://huggingface.co/api/models/"+repo+"?blobs=true",headers=headers),key,timeout=60) as meta:
-                metadata=json.load(meta)
-            entry=next((s for s in metadata.get("siblings",[]) if s.get("rfilename")==filepath),{})
-            lfs=entry.get("lfs",{});expected=lfs.get("sha256");size=entry.get("size") or lfs.get("size")
-            if not expected or not re.fullmatch(r"[a-f0-9]{64}",expected) or not isinstance(size,int) or size<=0: raise ValueError("下载源未返回大小/SHA256，无法校验，未下载")
+            for metadata_attempt in range(2):
+                try:
+                    with self.open_source(urllib.request.Request("https://huggingface.co/api/models/"+repo+"?blobs=true",headers=headers),key,timeout=60) as meta:
+                        metadata=json.load(meta)
+                    entry=next((s for s in metadata.get("siblings",[]) if s.get("rfilename")==filepath),{})
+                    lfs=entry.get("lfs",{});expected=lfs.get("sha256");size=entry.get("size") or lfs.get("size")
+                    if not isinstance(expected,str) or not re.fullmatch(r"[a-f0-9]{64}",expected) or not isinstance(size,int) or size<=0 or not isinstance(metadata.get('sha'),str) or not metadata['sha']:raise ValueError("下载源未返回版本、大小/SHA256，无法校验，未下载")
+                    break
+                except (ValueError,TypeError,AttributeError,OSError,http.client.HTTPException) as error:
+                    if self.jobs[key].get('download_source')!='xiangongyun' or metadata_attempt:raise
+                    self.update(key,download_source='official',error='仙宫云模型信息不可用，切换官方源')
             marker=part.with_name(part.name+".json")
             identity={"sha256":expected,"size":size}
             try: compatible=json.loads(marker.read_text())==identity
@@ -240,7 +248,7 @@ class Downloads:
                 except (OSError,urllib.error.URLError,http.client.HTTPException) as error:
                     if isinstance(error,urllib.error.HTTPError) and error.code not in {408,429,500,502,503,504}: raise
                     if isinstance(error,OSError) and error.errno in {errno.ENOSPC,errno.EACCES,errno.EROFS,errno.EPERM}: raise
-                    if self.source_failure(error): self.update(key,download_source="xiangongyun")
+                    if self.source_failure(error): self.update(key,download_source="official")
                     if attempt==4: raise ConnectionError("自动重试4次仍失败；已保留断点，点击重试可继续。"+str(error)) from error
                     self.update(key,state="retrying",attempt=attempt,error=download_error(error,stage))
                     self.sleeper(min(2**attempt,8))
@@ -252,6 +260,10 @@ class Downloads:
             if part.stat().st_size!=size: raise ValueError("下载文件不完整，已保留断点")
             if digest.hexdigest()!=expected:
                 part.unlink(missing_ok=True);marker.unlink(missing_ok=True)
+                if self.jobs[key].get('download_source')=='xiangongyun':
+                    self.update(key,state='retrying',download_source='official',error='仙宫云文件校验失败，改从官方重新下载')
+                    self.run(model,_official=True)
+                    return
                 raise ValueError("完整文件SHA256校验失败，损坏文件已清除，请重试")
             # Never overwrite files created by another downloader while this job was running.
             stage="安装模型文件"

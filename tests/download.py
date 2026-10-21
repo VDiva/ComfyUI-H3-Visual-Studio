@@ -2,6 +2,14 @@ import importlib.util, tempfile, json, hashlib, io
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location("download",root/"model_download.py");m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+# These tests exercise the official transfer path after an unavailable mirror.
+import urllib.error
+class OfficialDownloads(m.Downloads):
+ def __init__(self,*args,**kwargs):
+  super().__init__(*args,**kwargs)
+  def offline(*args,**kwargs):raise urllib.error.URLError('mirror unavailable in official-path test')
+  self.internal_opener=offline
+m.Downloads=OfficialDownloads
 content=b"test model data";digest=hashlib.sha256(content).hexdigest()
 model={"key":"models/vae/test.safetensors","category":"vae","name":"test.safetensors","url":"https://huggingface.co/owner/repo/resolve/main/test.safetensors","size":None,"sha256":None}
 m.CATALOG=[model]

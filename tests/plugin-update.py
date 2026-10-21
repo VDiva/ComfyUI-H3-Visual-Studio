@@ -4,12 +4,17 @@ from unittest.mock import patch
 root=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('h3_update_test',root/'plugin_update.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 SHA='a'*40
+assert m.REPOSITORY=='VDiva/ComfyUI-H3-Visual-Studio'
 
-def package(version='0.13.1',subdir='',extra=None):
+def package(version='0.13.1',subdir='',extra=None,omit=()):
  data=io.BytesIO()
  files={'__init__.py':'VALUE="new"','version.json':json.dumps({'project':m.PROJECT,'version':version}),'web/studio-runtime.mjs':'export const version="new";','web/global-entry.js':'// new','model-catalog.json':'[]','new.py':'VALUE=1',**(extra or {})}
+ for name in m.REQUIRED:files.setdefault(name,'# fixture' if name.endswith('.py') else '// fixture' if name.endswith('.mjs') else 'fixture')
+ files['director_core/source-manifest.json']=json.dumps({'director/executor_core.py':'0'*64})
+ files['director_core/source-normalized-manifest.json']='{}'
  with zipfile.ZipFile(data,'w') as z:
-  for name,text in files.items():z.writestr('MiniMaxH3Plugin-'+SHA+'/'+(subdir+'/' if subdir else '')+name,text)
+  for name,text in files.items():
+   if name not in omit:z.writestr('ComfyUI-H3-Visual-Studio-'+SHA+'/'+(subdir+'/' if subdir else '')+name,text)
  return data.getvalue()
 class Response(io.BytesIO):
  def __init__(self,data):super().__init__(data);self.headers={'Content-Length':str(len(data))}
@@ -67,3 +72,14 @@ with tempfile.TemporaryDirectory() as tmp:
 with tempfile.TemporaryDirectory() as tmp:
  folder=local(tmp);github=GitHub();github.data=package('0.99.0');updater=m.PluginUpdater(folder,opener=github);ready(updater);updater.install(SHA);updater.worker.join(5);assert updater.snapshot()['state']=='error';assert (folder/'__init__.py').read_text()=='VALUE="old"'
 print('PASS task-start race recheck and downloaded manifest mismatch keep original plugin intact')
+
+assert not m.preserved('tests/.fixtures/官方采样API基线.json')
+assert m.preserved('tests/.fixtures/private.json')
+for missing in ['director_bridge.py','director_core/director/executor_core.py','LICENSE']:
+ with tempfile.TemporaryDirectory() as tmp:
+  try:m.unpack(package(omit=(missing,)),Path(tmp),'');raise AssertionError('incomplete package accepted: '+missing)
+  except ValueError:pass
+with tempfile.TemporaryDirectory() as tmp:
+ try:m.unpack(package(extra={'director_core/lib/broken.py':'def broken('}),Path(tmp),'');raise AssertionError('nested syntax error accepted')
+ except SyntaxError:pass
+print('PASS missing Director/license rejection, nested Python validation and allowlisted test fixtures')

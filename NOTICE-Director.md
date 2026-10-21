@@ -10,6 +10,8 @@ The upstream root initializer/frontend/routes are not activated. `director_bridg
 
 ## Distribution notices
 
+The original byte hashes remain in source-manifest.json. Git checkout can convert LF/CRLF; source-normalized-manifest.json records LF-normalized hashes for unchanged upstream Python files. Each normalized entry was verified against the original byte hash using its original LF, CRLF or mixed newline representation. The modified refine_pack.py is excluded from that unchanged-source manifest.
+
 See the root NOTICE and LICENSE, director_core/LICENSE, and the preserved upstream README. Existing copyright and attribution comments remain in the vendored sources. Modified upstream files carry a change notice. This package does not claim authorship of the upstream runtime or endorsement from upstream maintainers.
 
 The former standalone latent/SelfLift adapters and their duplicate license file were removed in 0.14.1. The complete Apache-2.0 text is retained at the root and inside director_core. Models and third-party dependencies retain their own licenses.

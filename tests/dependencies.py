@@ -12,7 +12,7 @@ def runner(cmd,**kwargs):
 with tempfile.TemporaryDirectory() as temp,patch.object(m,'find_module',return_value=False):
  manager=m.DependencyManager(temp,lambda:{},env=lambda:env,runner=runner)
  manager.start(['sageattention','sageattention']);manager.pool.shutdown(wait=True)
- assert manager.snapshot()['items'][3]['job']['state']=='restart_required',manager.snapshot()
+ assert next(item for item in manager.snapshot()['items'] if item['key']=='sageattention')['job']['state']=='restart_required',manager.snapshot()
  pip=[cmd for cmd,kw in calls if '-m' in cmd and 'pip' in cmd][0]
  assert pip[0]==sys.executable and '--only-binary=:all:' in pip and '--constraint' in pip
  assert 'triton-windows>=3.4.0,<3.5' in pip and 'sageattention==1.0.6' in pip
