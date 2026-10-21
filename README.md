@@ -1,3 +1,32 @@
+# 0.12.0 自动人物生图切换到Qwen-Image-2.1
+
+默认采用Comfy-Org/Qwen-Image-2.1仓库的Turbo INT8版本：8步、CFG 1、Euler/simple，配套Qwen3-VL 8B W4A8和专用VAE。使用官方`TextEncodeQwenImage21`、`QwenImage21Cache`、`EmptyLatentImage`、`KSampler`、`VAEDecode`、`SaveImage`链路；不沿用Z-Image的lumina2编码和AuraFlow采样补丁，不叠加Turbo LoRA，也不额外下载提示词增强模型。当前用途是文生人物参考图，尚未接入Qwen图像编辑。
+
+缺少权重会在“模型与下载”汇总，可沿用一键下载安装及进度功能；缺少`TextEncodeQwenImage21`或`QwenImage21Cache`意味着需要更新ComfyUI核心，不能靠下载模型解决。旧Z-Image默认配置打开时转换，保留尺寸、种子和画风；人物图缓存版本更新，下次生成会更新对应人物参考图。旧图片和模型文件不会自动删除。
+
+默认人物图768×1024，仍可调整分辨率、步数、CFG和种子。模型下载总量约14.25GB；量化文件大小不代表实际显存峰值，8GB显存+32GB内存是否稳定仍需云端实测。视频H3配置不随生图模型切换。
+
+示例：`examples/Qwen-Image-2.1人物生图工作流.json`可加载到ComfyUI，`examples/Qwen-Image-2.1人物生图API.json`供API调用。接口参照[Comfy官方模板](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_2_1_t2i.json)及[官方节点源码](https://github.com/Comfy-Org/ComfyUI/blob/master/comfy_extras/nodes_qwen.py)，Turbo参数参照[模型卡](https://huggingface.co/Comfy-Org/Qwen-Image-2.1)。已通过图编译、设置转换、模型预检和浏览器衔接测试，未在云端GPU实测。完整更新插件后重启ComfyUI并强制刷新页面。
+
+---
+
+# 0.11.0 工作室与后台执行更新
+
+- 一采MP调整后，二采目标同步为2倍MP；重新开启放大也会同步。生成精修目标支持到4MP。均衡新建预设为约0.4MP一采→0.8MP二采；“原例双模型2MP”是明确选择的独立预设，后续修改一采仍按2倍联动。手动改二采目标只作用于当前设置，下次修改一采会重新同步。已有保存工程不会在打开时被强制覆盖。
+- 底部常驻实际执行参数摘要：尺寸、有效一采步数/采样器、放大目标、二采步数/强度、种子和本段时长。不同MP档位受宽高取整影响。
+- “视频精修与放大”新增“同步对比一采 / 精修成片”：左右视频共用时间轴，可同步播放、暂停、拖动和双屏全屏；右侧静音防止双重声音。需原片和成片均已生成，普通视频处理仍可使用原预览按钮。
+- “固定条件A/B生成”：比较一采MP、二采强度或二采步数；固定提示词、参考素材、种子及其他参数。比较MP时固定最终目标MP和最终宽高，结果另存，不覆盖原成片；完成后点击“对比A/B结果”。不同尺寸噪声形状不同，固定种子不能消除全部构图差异。A/B需要生成两段视频。
+- 面板生成按钮改为云端后台顺序批次；提交成功后可关闭网页。人物图仍需先在页面准备完成，再交接后台视频批次。每批1—200段；任务失败会停止后续提交；“停止后续提交”保留当前已提交任务继续运行。
+- 后台批次和执行图存于`output/H3_Studio_Batches`；刷新/重新打开同一工作室工程会恢复查询。请保存工作室工程，以保留页面ID及素材设置。服务重启后批次暂停，点击“继续后台批次”查询已提交任务后继续；不会自动重提。提交结果不确定时禁止自动重试，先检查ComfyUI队列再停止并重建剩余任务。
+- 勾选自动合并时由后台在全部完成后执行磁盘FFmpeg合并，保持各段原音轨；尺寸/编码不一致会明确报错，原片保留。A/B批次不自动合并。
+- 前端本地模块统一版本0.11.0，防止界面与编译器混用旧缓存。需完整更新插件、重启ComfyUI并强制刷新浏览器。
+
+模型、加速与显存调研见[2026-10-21调研说明](模型与显存优化调研_2026-10-21.md)。本次未自动安装候选权重、替换默认模型或修改云端启动参数。
+
+验证范围：后台调度模拟、真实MP4同步播放、工作室浏览器回归及图编译检查；本地没有ComfyUI/GPU运行环境，云端真实模型执行、峰值显存和速度仍需实测。
+
+---
+
 ## v0.7.1 默认开启Director功能
 
 Director H3 latent放大、高清二次采样、latent时间分块默认开启。旧工程首次读取时自动迁移到此默认组合，保留目标MP；迁移后的手动开关设置正常保存，不会反复覆盖。首次仍需下载H3 latent模型。完整替换插件、重启并Ctrl+F5。
@@ -72,7 +101,7 @@ Director H3 latent放大、高清二次采样、latent时间分块默认开启�
 
 每页选择“参考素材 → 生视频”或“自动生成人物参考图 → 生视频”。全局导入入口也可选择模式。自动模式允许目录只有素材组提示词，不需要参考图文件夹。
 
-自动模式使用 Z-Image Turbo 专用生图模型，按官方 ComfyUI 节点生成单人人物图，然后上传为当前页公共参考图，再由官方 H3 链路生视频。先按姓名和 S 编号提取人物设定；这是文字规则提取，建议检查并编辑外貌、服装，不能保证自动理解所有故事。可先点“只生成/更新人物图”检查结果。
+自动模式使用 Qwen-Image-2.1 Turbo INT8 专用生图模型，按官方 ComfyUI 节点生成单人人物图，然后上传为当前页公共参考图，再由官方 H3 链路生视频。先按姓名和 S 编号提取人物设定；这是文字规则提取，建议检查并编辑外貌、服装，不能保证自动理解所有故事。可先点“只生成/更新人物图”检查结果。
 
 同页各组复用已保存的人物图；修改人物设定或生图参数后更新对应图片。原提示词中的旧 Picture 引用在自动模式执行时替换为人物图映射，保存的原文保留。参考模式继续使用原图片编号。缺模型或生图失败会停止视频；图片已完成但转存失败时保留任务，重试只转存。查询已提交任务不会主动创建新任务。
 
@@ -80,14 +109,14 @@ Director H3 latent放大、高清二次采样、latent时间分块默认开启�
 
 | 文件 | ComfyUI 内目录 |
 | --- | --- |
-| z_image_turbo_bf16.safetensors | models/diffusion_models |
-| qwen_3_4b.safetensors | models/text_encoders |
-| ae.safetensors | models/vae |
+| qwen_image_2.1_turbo_int8_convrot.safetensors | models/diffusion_models |
+| qwen3vl_8b_w4a8.safetensors | models/text_encoders |
+| qwen_image_2.1_vae_bf16.safetensors | models/vae |
 
-下载：https://huggingface.co/Comfy-Org/z_image_turbo/tree/main/split_files
-官方节点模板：https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_z_image_turbo.json
+下载：https://huggingface.co/Comfy-Org/Qwen-Image-2.1
+官方节点模板：https://github.com/Comfy-Org/workflow_templates/blob/main/templates/image_qwen_image_2_1_t2i.json
 
-默认 CLIP 类型 lumina2，8步、CFG 1、res_multistep/simple、shift 3；人物图默认768×1024，可在面板调整。模型约需19GB磁盘空间，实际显存与耗时依云端配置。请更新支持这些官方节点的 ComfyUI。H3 自身仍使用原工程的模型设置。
+默认 CLIP 类型 qwen_image，8步、CFG 1、euler/simple，不叠加额外Turbo LoRA；人物图默认768×1024，可在面板调整。三个模型合计约14.25GB磁盘空间，实际显存与耗时依云端配置。请更新支持这些官方节点的 ComfyUI。H3 自身仍使用原工程的模型设置。
 
 人物图只约束外貌，不能锁定音色；参考音频仍默认关闭。当前没有云端 GPU 实测，浏览器测试使用模拟接口，只验证导入、排队、缓存、恢复与官方请求结构。
 
@@ -216,7 +245,7 @@ FFmpeg二进制来自PyPI imageio-ffmpeg发行包，来源和wheel校验值见ff
 
 ## 生成前模型检查
 
-“检查全部模型”按当前模式汇总官方图实际配置的主模型、CLIP文本编码器、视频和音频VAE、LoRA。自动生图模式同时检查Z-Image三个模型。所有缺失文件和缺少节点一次显示，文件前带models存放目录。模型列表无法读取时明确提示无法确认并阻止提交，不把未知当作已安装。每次批量或原生Run提交前重新检查；“只生成/更新人物图”仅检查生图链路。检查不会自动下载权重。
+“检查全部模型”按当前模式汇总官方图实际配置的主模型、CLIP文本编码器、视频和音频VAE、LoRA。自动生图模式同时检查Qwen-Image-2.1三个模型。所有缺失文件和缺少节点一次显示，文件前带models存放目录。模型列表无法读取时明确提示无法确认并阻止提交，不把未知当作已安装。每次批量或原生Run提交前重新检查；“只生成/更新人物图”仅检查生图链路。检查不会自动下载权重。
 
 
 ## 云端直接下载模型
@@ -351,3 +380,5 @@ SageAttention自动安装采用作者文档提供的Triton V1方案sageattention
 本地测试覆盖依赖识别、兼容选择、安装命令约束、固定源码归档、路径与覆盖保护、前端安装和日志；没有在本机实际安装GPU依赖，也没有访问或修改云端环境。
 
 调整一采百万像素或画幅比例时，二采放大目标自动同步为一采MP的2倍（0.4→0.8、0.6→1.2、2→4MP），向上或向下调整均联动。这是像素总量的2倍，不是宽高各2倍。二采步数和强度不变；关闭放大时不联动。生成时精修目标范围扩展至4MP，已有视频后处理仍为0.1—2MP。
+
+Linux首次调用内置FFmpeg时，插件会自动检查执行权限，缺失时添加执行位（相当于chmod +x）；合并和普通视频处理共用此入口。只读或noexec挂载会明确报错，Windows不修改权限。

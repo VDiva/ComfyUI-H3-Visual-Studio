@@ -1,21 +1,25 @@
-import {mountDependencies} from './dependencies.mjs?v=0.10.0';
-import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.9.0';
-import {mountSelfLift,selfLiftApi} from './selflift.mjs?v=0.9.1';
-import {mountFinishing,finishApi,syncFinishingResolution} from './finishing.mjs?v=0.10.3';
-import {executionProgress} from './execution-progress.mjs?v=0.8.0';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.10.3';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.5.8';
-import {openFolderTemplate} from './folder-template.mjs?v=0.10.1';
-import {livePreview} from './live-preview.mjs?v=0.5.8';
-import {modelDownloader} from './model-download.mjs?v=0.5.8';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.8.0';
-import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.9.0';
+import {backgroundBatch} from './background-batch.mjs?v=0.12.0';
+import {generationSummary} from './generation-summary.mjs?v=0.12.0';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.12.0';
+import {openVideoCompare} from './video-compare.mjs?v=0.12.0';
+import {mountDependencies} from './dependencies.mjs?v=0.12.0';
+import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.12.0';
+import {mountSelfLift,selfLiftApi} from './selflift.mjs?v=0.12.0';
+import {mountFinishing,finishApi,syncFinishingResolution} from './finishing.mjs?v=0.12.0';
+import {executionProgress} from './execution-progress.mjs?v=0.12.0';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.12.0';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.12.0';
+import {openFolderTemplate} from './folder-template.mjs?v=0.12.0';
+import {livePreview} from './live-preview.mjs?v=0.12.0';
+import {modelDownloader} from './model-download.mjs?v=0.12.0';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.12.0';
+import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.12.0';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.5.8';
-import './folder-core.js?v=0.10.1';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.9.1';
-import {buildOfficialImport,verifyOfficialImport} from './official-import.mjs?v=0.5.8';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.12.0';
+import './folder-core.js?v=0.12.0';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.12.0';
+import {buildOfficialImport,verifyOfficialImport} from './official-import.mjs?v=0.12.0';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -41,19 +45,19 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.10.0</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.12.0</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组官方工作流</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
  <div class="row"><span class="title">工作模式</span><select id="mode"><option value="reference">参考素材 → 生视频</option><option value="auto_character">自动生成人物参考图 → 生视频</option></select><span class="muted">模式按页面保存</span></div>
- <div id="character-panel" class="library" hidden><div class="row"><span class="title grow">人物参考图 · Z-Image Turbo</span><button id="extract-characters">从提示词识别人物</button><button id="add-character">添加人物</button><button id="generate-characters">只生成/更新人物图</button></div><p class="muted">先提取人物外貌设定，可编辑后生图；同一页按人物复用，不为每个素材组重复生成。缺少明确人物标签时请补充设定。</p><details><summary>生图模型与风格设置（首次需下载模型）</summary><div id="image-settings" class="row"></div><textarea id="image-style" style="min-height:65px" placeholder="统一人物参考图画风"></textarea><a href="https://huggingface.co/Comfy-Org/z_image_turbo/tree/main/split_files" target="_blank" rel="noopener">官方模型下载</a></details><div id="characters"></div></div>
+ <div id="character-panel" class="library" hidden><div class="row"><span class="title grow">人物参考图 · Qwen-Image-2.1 Turbo</span><button id="extract-characters">从提示词识别人物</button><button id="add-character">添加人物</button><button id="generate-characters">只生成/更新人物图</button></div><p class="muted">先提取人物外貌设定，可编辑后生图；同一页按人物复用，不为每个素材组重复生成。缺少明确人物标签时请补充设定。</p><details><summary>生图模型与风格设置（首次需下载模型）</summary><div id="image-settings" class="row"></div><textarea id="image-style" style="min-height:65px" placeholder="统一人物参考图画风"></textarea><a href="https://huggingface.co/Comfy-Org/Qwen-Image-2.1" target="_blank" rel="noopener">官方模型下载</a></details><div id="characters"></div></div>
  <div class="library"><div class="row"><span class="title">公共素材库</span><button data-tab="images">图片</button><button data-tab="audios">音频</button><button data-tab="videos">视频</button><span id="counts" class="muted grow"></span><button id="upload">添加公共素材</button></div><div id="gallery" class="gallery"></div><div class="muted">公共库不限保存数量；分组用 &lt;Picture N&gt;、&lt;Audio N&gt;、&lt;Video N&gt; 引用所需素材。</div></div>
  <details class="settings"><summary>官方生成设置与公共提示词</summary><div class="row" id="settings"></div><textarea id="common" style="min-height:65px" placeholder="公共提示词（与每组提示词合并）"></textarea></details>
  <div id="timeline" class="timeline"></div>
  <div class="row"><span class="title">素材组</span><span id="summary" class="muted grow"></span><button id="all">全选</button><button id="none">取消全选</button><button id="add">添加分组</button></div>
  <div class="work"><div id="groups" class="groups"></div><div class="editor"><div class="row"><span id="group-title" class="title grow"></span><label>请求秒数 <input id="seconds" type="number" min="0.2" max="20.7" step="0.1"></label><button id="up">↑</button><button id="down">↓</button><button id="remove">删除本组</button></div><textarea id="prompt" placeholder="本组提示词。只说明确标注的台词；图片编号指向上方公共素材库。"></textarea><div id="binding" class="muted"></div><div id="result"></div></div></div>
  </fieldset></main><aside class="live-pane"><div class="title">实时预览 / 最新结果</div><p id="live-label" class="muted">等待任务。采样预览需云端开启预览；完成后自动显示图片或视频。</p><img id="live-image" hidden><video id="live-video" controls playsinline preload="metadata" hidden></video></aside></div>
- <div class="runbar"><button id="run-one" class="primary">生成当前组</button><button id="run" class="primary">按顺序生成勾选组</button><label><input id="auto-merge" type="checkbox">批量完成后自动合并</label><button id="merge">合并勾选组</button><button id="stop" class="danger" disabled>停止后续提交</button><button id="resume">查询已提交任务</button><span class="muted">批量生成期间请保持页面打开</span></div>
+ <div class="runbar"><button id="run-one" class="primary">生成当前组</button><button id="run" class="primary">按顺序生成勾选组</button><label><input id="auto-merge" type="checkbox">批量完成后自动合并</label><button id="merge">合并勾选组</button><button id="stop" class="danger" disabled>停止后续提交</button><button id="resume">查询已提交任务</button><span class="muted">后台批次提交成功后可关闭页面（人物图准备阶段需保持打开）</span></div>
  <div id="model-downloads" style="white-space:pre-wrap;overflow-wrap:anywhere"></div><div id="status" class="status" style="white-space:pre-wrap;overflow-wrap:anywhere">先导入目录并建页，或添加分组。采样和音视频保存由官方节点完成。</div>
  <input id="folder-input" class="file" type="file" webkitdirectory multiple><input id="json-input" class="file" type="file" accept="application/json,.json"><input id="media-input" class="file" type="file" multiple>
  </div>`;
@@ -80,19 +84,35 @@ function attach(node){
  const escape=e=>{if(e.key==='Escape'&&expanded)toggleExpanded(false);};document.addEventListener('keydown',escape);$('expand').onclick=()=>toggleExpanded();
  const persist=()=>{widget.value=JSON.stringify(workspace);node.setDirtyCanvas?.(true,true);};
  function log(text){$('status').textContent=text;}
+ const generationInfo=document.createElement('div');generationInfo.id='generation-summary';generationInfo.className='status';generationInfo.style.cssText='white-space:pre-wrap;flex-shrink:0';$('status').before(generationInfo);
+ const batchInfo=document.createElement('div');batchInfo.id='batch-status';batchInfo.className='status';$('status').before(batchInfo);
+ const batchResume=document.createElement('button');batchResume.id='batch-continue';batchResume.textContent='继续后台批次';batchResume.hidden=true;root.querySelector('.runbar').append(batchResume);
+ const compareButton=document.createElement('button');compareButton.id='quality-compare';compareButton.textContent='固定条件A/B生成';root.querySelector('.runbar').append(compareButton);
+ const compareResult=document.createElement('button');compareResult.id='quality-results';compareResult.textContent='对比A/B结果';compareResult.disabled=true;root.querySelector('.runbar').append(compareResult);
  const stepStatus=document.createElement('div');stepStatus.className='status';stepStatus.style.cssText='white-space:pre-wrap;flex-shrink:0';stepStatus.textContent='当前步骤：等待任务';stepStatus.setAttribute('role','status');$('status').before(stepStatus);
  const previewStep=document.createElement('div');previewStep.style.cssText='white-space:pre-wrap;color:#8aefcf;font-weight:600;padding:8px 0';previewStep.textContent='当前步骤：等待任务';$('live-label').before(previewStep);
  const progressTracker=executionProgress({api,show:text=>{stepStatus.textContent='当前步骤：'+text;previewStep.textContent='当前步骤：'+text;}});
- function setBusy(value){busy=value;$('add-page').disabled=value;$('delete-page').disabled=value;$('edit').disabled=value;for(const id of ['run','run-one','resume'])$(id).disabled=value;$('stop').disabled=!value;}
+ function setBusy(value){busy=value;$('add-page').disabled=value;$('delete-page').disabled=value||batchController.active;$('edit').disabled=value||batchController.active;for(const id of ['run','run-one'])$(id).disabled=value||batchController.active;$('resume').disabled=value;$('merge').disabled=value||batchController.active;compareButton.disabled=value||batchController.active;$('stop').disabled=!value&&!batchController.active;}
  function current(){return project.groups[selected];}
 
+ let lastBatchPrompt=null;
+ const batchController=backgroundBatch({api,getPage:()=>project,persist,log,onUpdate:(page,job)=>{
+  if(page!==project)return;
+  const counts=job.items.filter(i=>i.state==='done').length;
+  batchInfo.textContent=`后台批次：${({queued:'排队',running:'执行中',merging:'合并中',done:'已完成',stopped:'已停止后续提交',paused:'暂停',error:'失败'})[job.state]||job.state} · ${counts}/${job.items.length}`+(job.error?' · '+job.error:'');
+  batchResume.hidden=job.state!=='paused';
+  const running=job.items.find(i=>['running','queued'].includes(i.state)&&i.promptId);
+  if(running&&running.promptId!==lastBatchPrompt){lastBatchPrompt=running.promptId;preview.watch(running.promptId,running.label+' · 云端执行中');void api.fetchApi('/queue').then(r=>r.json()).then(q=>{const row=[...(q.queue_running||[]),...(q.queue_pending||[])].find(r=>r[1]===running.promptId);if(row&&project===page)progressTracker.watch(running.promptId,row[2],running.label);}).catch(()=>{});}
+  render();setBusy(busy);
+ }});
+ batchResume.onclick=()=>{void batchController.action('resume').catch(e=>log(e.message));};
  const finishingController=mountFinishing({onSettingsChanged:()=>render(),container:panels.finishing,api,getProject:()=>project,getGroup:current,persist,preview,view,log,isBusy:()=>busy,setBusy,onQueued:(id,prompt)=>progressTracker.watch(id,prompt,'已有视频AI超分'),onFinished:id=>progressTracker.finish(id),openModelDownloads:async()=>{showPanel('models');const key=(project.selflift?.enabled||project.finishing?.upscale==='latent')?'models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors':'models/upscale_models/RealESRGAN_x4.pth';await downloader.show({missing:[key]});log('点击模型旁的下载按钮，安装完成后返回视频精修与放大，刷新并选择模型。');}});
  const selfliftController=mountSelfLift({container:panels.finishing,getProject:()=>project,persist,onChange:()=>{syncSettings();render();},log});
  const recipeController=mountDirectorRecipe({container:panels.finishing,getProject:()=>project,persist,onChange:()=>{syncSettings();render();},log});
  function numberGroups(){project.groups.forEach((g,i)=>g.number=i+1);selected=Math.max(0,Math.min(selected,project.groups.length-1));}
  function render(){
   $('page-list').replaceChildren();
-  for(const page of workspace.pages){const button=document.createElement('button');button.className='page'+(page===project?' active':'');button.textContent=page.name;button.title=page.sourcePath||page.name;button.onclick=()=>{if(busy)return;project=page;workspace.activePageId=page.pageId;selected=0;syncSettings();persist();render();};$('page-list').append(button);}
+  for(const page of workspace.pages){const button=document.createElement('button');button.className='page'+(page===project?' active':'');button.textContent=page.name;button.title=page.sourcePath||page.name;button.onclick=()=>{if(busy)return;project=page;workspace.activePageId=page.pageId;selected=0;syncSettings();persist();render();void batchController.query({discover:true});};$('page-list').append(button);}
   numberGroups();$('mode').value=project.mode;$('character-panel').hidden=project.mode!=='auto_character';renderCharacters();$('name').value=project.name;$('common').value=project.commonPrompt;commonResourceEditor.sync();$('audio').checked=!!project.audioReference;
   $('auto-merge').checked=project.autoMerge===true;
   $('counts').textContent=`${project.media.images.length}图 · ${project.media.audios.length}音频 · ${project.media.videos.length}视频`;
@@ -120,6 +140,7 @@ function attach(node){
    for(const file of [...(g.job?.videos||[]),...(project.mergedVideo?[project.mergedVideo]:[])]){const video=document.createElement('video');video.className='preview';video.controls=true;video.preload='metadata';video.src=view({...file,type:file.type||'output'});$('result').append(video);}
    if(!busy&&g.job?.videos?.[0])preview.video(view({...g.job.videos[0],type:'output'}),'素材组'+g.number+' · 已完成视频');
   }else $('binding').textContent='';
+  generationInfo.textContent=generationSummary(project,current());compareResult.disabled=!(project.comparison?.groups?.every(g=>g.job?.state==='done'&&g.job.videos?.[0]));
   finishingController.sync();selfliftController.sync();recipeController.sync();
   persist();
  }
@@ -141,10 +162,10 @@ function attach(node){
    $('characters').append(card);
   }
  }
- for(const key of ['model','clip','vae','steps','seed']){
-  const label=document.createElement('label');label.textContent=({model:'生图模型',clip:'文本编码器',vae:'图像VAE',width:'图宽',height:'图高',steps:'生图步数',seed:'生图种子'})[key];
+ for(const key of ['model','clip','vae','steps','cfg','seed']){
+  const label=document.createElement('label');label.textContent=({model:'生图模型',clip:'文本编码器',vae:'图像VAE',width:'图宽',height:'图高',steps:'生图步数',cfg:'生图CFG',seed:'生图种子'})[key];
   const input=document.createElement('input');input.dataset.imageSetting=key;input.type=['model','clip','vae'].includes(key)?'text':'number';input.value=project.imageSettings[key];if(input.type==='text')input.style.width='260px';
-  input.oninput=()=>{project.imageSettings[key]=input.type==='number'?Number(input.value):input.value;persist();updateBinding();};label.append(input);$('image-settings').append(label);
+  input.oninput=()=>{project.imageSettings[key]=input.type==='number'?Number(input.value):input.value;persist();updateBinding();};if(key==='cfg')input.step='0.1';label.append(input);$('image-settings').append(label);
  }
  const imageResolution=mountResolution({container:$('image-settings'),getSettings:()=>project.imageSettings,onChange:()=>{persist();updateBinding();},step:16,id:'image-resolution'});
  const videoResolution=mountResolution({container:$('settings'),getSettings:()=>project.settings,onChange:mp=>{const raised=syncFinishingResolution(project,mp);finishingController.sync();persist();updateBinding();if(raised)log('已同步二采放大目标为 '+project.finishing.megapixels+' MP（一采MP的2倍）。');$('resolution-guide').textContent=resolutionGuide(project.settings);},id:'video-resolution'});
@@ -163,7 +184,7 @@ function attach(node){
  accelerationLabel.append(accelerationSelect);$('settings').prepend(accelerationLabel);
  const accelerationHelp=document.createElement('span');accelerationHelp.className='muted';accelerationHelp.id='acceleration-help';$('settings').append(accelerationHelp);
  accelerationSelect.onchange=()=>{project.settings.acceleration=accelerationSelect.value;syncSettings();persist();updateBinding();log(accelerationSummary(project.settings));};
- function updateBinding(){
+ function updateBinding(){generationInfo.textContent=generationSummary(project,current());
   const g=current();if(!g)return;
   try{const video=videoWithCharacters(project,g);const p=planGroup(video.project,video.group);$('binding').textContent=`本组实际输入 ${p.images.length}图 / ${p.audios.length}音频 / ${p.videos.length}视频；${p.length}帧 ≈ ${(p.length/24).toFixed(2)}秒。`;}catch(error){$('binding').textContent='待修正：'+error.message;}
   $('summary').textContent=`${project.groups.length}组 · ${project.groups.reduce((n,g)=>n+Number(g.seconds||0),0).toFixed(1)}秒请求时长`;
@@ -289,18 +310,27 @@ function attach(node){
   const data=await response.json();if(!response.ok||!data.video)throw Error(data.error||'合并失败');
   project.mergedVideo=data.video;preview.video(view(data.video),'合并视频已完成');persist();render();log('合并完成，已保存到output/H3_Merged；编辑区可预览。');
  }
- $('merge').onclick=async()=>{if(busy)return;setBusy(true);try{await mergeGroups(project.groups.filter(g=>g.selected!==false));}catch(error){log(error.message);}finally{setBusy(false);}};
+ $('merge').onclick=async()=>{if(busy||batchController.active)return;setBusy(true);try{await mergeGroups(project.groups.filter(g=>g.selected!==false));}catch(error){log(error.message);}finally{setBusy(false);}};
  async function run(one){
-  if(busy)return;const chosen=one?[current()]:project.groups.filter(g=>g.selected!==false);if(!chosen.length||!chosen[0]){log('请先选择素材组');return;}
+  if(busy||batchController.active){log('此页有未结束后台批次，请先查询或停止后续提交。');return;}const chosen=one?[current()]:project.groups.filter(g=>g.selected!==false);if(!chosen.length||!chosen[0]){log('请先选择素材组');return;}
   setBusy(true);stop=false;
   try{persist();const graph=await app.graphToPrompt();await checkAllModels(graph);await ensureCharacterImages(chosen,graph);if(stop||disposed)throw Error('已停止后续生成');const snapshot=structuredClone(project);const requests=new Map();for(const g of chosen){const copy=snapshot.groups.find(v=>v.id===g.id);requests.set(g.id,compileRequest(graph.output,snapshot,copy));}
-   await runSequential({groups:chosen,shouldStop:()=>stop||disposed,submit:async g=>{log(`正在提交素材组${g.number}；只使用官方采样与解码链路。`);const request=requests.get(g.id);preparedRequests.add(request.prompt);const workflow=structuredClone(graph.workflow);workflow.extra ||= {};workflow.extra.h3_visual_request={pageId:project.pageId,pageName:project.name,groupId:g.id,groupNumber:g.number,prompt:request.plan.prompt,length:request.plan.length,mapping:request.plan.mapping};return api.queuePrompt(0,{output:request.prompt,workflow});},wait:waitJob,onState:(g,state,value)=>{if(state==='queued'){activeJob=value.prompt_id;g.job={state,promptId:value.prompt_id};preview.watch(activeJob,'素材组'+g.number+'生成中；等待云端预览帧');}else{activeJob=null;g.job={...g.job,state,videos:resultVideos(value),originalVideos:originalVideos(value)};if(g.job.videos[0])preview.video(view({...g.job.videos[0],type:'output'}),'素材组'+g.number+' · 完整视频，可播放声音');}persist();render();log(`素材组${g.number}：${state==='queued'?'已提交 '+value.prompt_id:state==='done'?'生成完成':'生成失败'}`);}});
-   if(!one&&!stop&&!disposed&&project.autoMerge&&chosen.length>1)await mergeGroups(chosen);
-   else log(stop?'已停止后续提交；已提交任务保留。':'所选素材组已逐组生成完成。');
+   const items=chosen.map(g=>{const request=requests.get(g.id),workflow=structuredClone(graph.workflow);workflow.extra ||= {};workflow.extra.h3_visual_request={pageId:project.pageId,groupId:g.id,groupNumber:g.number};return {groupId:g.id,label:'分段'+g.number,prompt:request.prompt,workflow};});
+   const job=await batchController.start(items,{autoMerge:!one&&project.autoMerge&&chosen.length>1});
+   log('后台批次已保存 '+job.id+'；现在可关闭页面。任务按顺序执行，刷新后可查询。');
   }catch(error){log('已停止：'+error.message+'。已提交任务不会自动重复提交，可查询任务状态。');}finally{activeJob=null;setBusy(false);}
  }
- $('run-one').onclick=()=>run(true);$('run').onclick=()=>run(false);$('stop').onclick=()=>{stop=true;log('停止后续提交；当前任务继续运行，等待完成后结束批次。');};
- $('resume').onclick=async()=>{if(busy)return;const pending=project.groups.filter(g=>g.job?.state==='queued'&&g.job.promptId);const images=project.characters.some(c=>['queued','generated'].includes(c.imageJob?.state));if(!pending.length&&!images){log('没有待查询任务。');return;}setBusy(true);stop=false;try{if(images)await ensureCharacterImages(project.groups,await app.graphToPrompt(),{allowSubmit:false});for(const g of pending){const history=await waitJob(g.job.promptId);g.job.state=history.status?.status_str==='success'?'done':'error';g.job.videos=resultVideos(history);g.job.originalVideos=originalVideos(history);persist();render();if(g.job.videos[0])preview.video(view({...g.job.videos[0],type:'output'}),'已恢复任务的视频结果');}log('已提交任务状态已更新；没有追加生成。');}catch(error){log(error.message);}finally{setBusy(false);}};
+ $('run-one').onclick=()=>run(true);$('run').onclick=()=>run(false);$('stop').onclick=()=>{stop=true;if(batchController.active)void batchController.action('stop').catch(e=>log(e.message));log('停止后续提交；当前任务继续运行，等待完成后结束批次。');};
+ $('resume').onclick=async()=>{if(busy)return;await batchController.query({discover:true});if(batchController.active||project.batch?.state==='done')return;const pending=project.groups.filter(g=>g.job?.state==='queued'&&g.job.promptId);const images=project.characters.some(c=>['queued','generated'].includes(c.imageJob?.state));if(!pending.length&&!images){log('没有待查询任务。');return;}setBusy(true);stop=false;try{if(images)await ensureCharacterImages(project.groups,await app.graphToPrompt(),{allowSubmit:false});for(const g of pending){const history=await waitJob(g.job.promptId);g.job.state=history.status?.status_str==='success'?'done':'error';g.job.videos=resultVideos(history);g.job.originalVideos=originalVideos(history);persist();render();if(g.job.videos[0])preview.video(view({...g.job.videos[0],type:'output'}),'已恢复任务的视频结果');}log('已提交任务状态已更新；没有追加生成。');}catch(error){log(error.message);}finally{setBusy(false);}};
+ compareButton.onclick=()=>{if(busy||batchController.active)return;openQualitySetup({root,initialTarget:project.finishing.megapixels,onSubmit:async options=>{
+  if(busy||batchController.active)throw Error('已有后台批次，请等待完成');
+  setBusy(true);stop=false;try{const graph=await app.graphToPrompt();await ensureCharacterImages([current()],graph);if(stop||disposed)throw Error('已取消');const variants=qualityVariants(project,current(),options);
+   const items=variants.map(v=>({groupId:v.group.id,label:v.label,prompt:compileRequest(graph.output,v.project,v.group).prompt,workflow:structuredClone(graph.workflow)}));
+   const info=await api.fetchApi('/object_info');if(!info.ok)throw Error('无法检查模型');assertModels(modelReport(await info.json(),items.map(i=>i.prompt)));const errors=await dependencyController.check(items[0].prompt);if(errors.length)throw Error(errors.join('\n'));
+   project.comparison={options,seed:project.settings.seed,groups:variants.map(v=>({...v.group,label:v.label,job:null})),created:Date.now()};persist();await batchController.start(items);log('A/B后台批次已提交，完成后点击“对比A/B结果”。');
+  }finally{setBusy(false);}
+ }});};
+ compareResult.onclick=()=>{try{const [a,b]=project.comparison.groups;openVideoCompare({root,left:{...a.job.videos[0],label:a.label},right:{...b.job.videos[0],label:b.label},view,title:'固定条件A/B画质对比 · 种子 '+project.comparison.seed});}catch(e){log('请先完成A/B两段生成：'+e.message);}};
  $('export').onclick=async()=>{try{if(project.settings.sageAttention||project.selflift?.enabled||project.finishing?.refine||(project.finishing?.upscale&&project.finishing.upscale!=='off')){const request=compileRequest((await app.graphToPrompt()).output,project,current());download(request.prompt,project.name+'_含精修_API.json');log('已导出包含精修、放大和一采保存的执行API（供ComfyUI API使用）；可视化工作区请用保存工程。');return;}const g=current();const video=videoWithCharacters(project,g);const plan=planGroup(video.project,video.group);const original=app.graph.serialize();const target=original.nodes.find(n=>n.type==='MiniMaxH3ReferenceToVideo');if(!target)throw Error('缺少官方H3节点');const uploaded=Object.fromEntries(['images','audios','videos'].map(key=>[key,plan[key].map(row=>row.file)]));
    const loader=(type,value)=>{const fresh=globalThis.LiteGraph.createNode(type);if(!fresh)throw Error('ComfyUI缺少官方节点 '+type);const key={LoadImage:'image',LoadAudio:'audio',LoadVideo:'file',PrimitiveStringMultiline:'value',PrimitiveInt:'value'}[type];if(key){const w=fresh.widgets?.find(w=>w.name===key);if(!w)throw Error(type+'参数接口不兼容');w.value=value;}const data=fresh.serialize();fresh.onRemoved?.();return data;};
    const result=buildOfficialImport(original,target.id,plan,uploaded,loader);verifyOfficialImport(result.graph,result);const output=result.graph;
@@ -316,8 +346,8 @@ function attach(node){
  setTimeout(()=>{if(!disposed)downloader.resume();},0);
  const dom=node.addDOMWidget('h3_visual','H3Visual',host,{serialize:false,hideOnZoom:false});dom.computeSize=()=>[1760,1020];
  node.setSize([1800,1100]);host.addEventListener('pointerdown',e=>e.stopPropagation());host.addEventListener('keydown',e=>e.stopPropagation());
- const state={installModels,importChapters,getMode:()=>project.mode,isBusy:()=>busy,async queueCurrent(number,data,send,options){
-  if(busy)throw Error('可视化工作室正在处理任务，请等待或停止后续提交');
+ const state={installModels,importChapters,getMode:()=>project.mode,isBusy:()=>busy||workspace.pages.some(p=>['submitting','unknown','queued','running','merging','paused'].includes(p.batch?.state)),async queueCurrent(number,data,send,options){
+  if(busy||batchController.active)throw Error('可视化工作室已有任务或后台批次，请等待或停止后续提交');
   const g=current();if(!g)throw Error('请先在可视化工作室中导入素材或添加分组');
   setBusy(true);stop=false;
   try{
@@ -326,7 +356,7 @@ function attach(node){
    const response=await send(number,{output:request.prompt,workflow},options);if(!response?.prompt_id)throw Error('服务器未返回任务ID');g.job={state:'queued',promptId:response.prompt_id};preview.watch(response.prompt_id);persist();render();log(`当前组已通过ComfyUI运行按钮提交：${response.prompt_id}；结果将自动更新。`);
    const queuedPageId=project.pageId;void waitJob(response.prompt_id).then(history=>{if(disposed||g.job?.promptId!==response.prompt_id)return;g.job.state=history.status?.status_str==='success'?'done':'error';g.job.videos=resultVideos(history);g.job.originalVideos=originalVideos(history);persist();if(project.pageId===queuedPageId){render();if(g.job.videos[0])preview.video(view({...g.job.videos[0],type:'output'}),'当前组视频已完成，可播放声音');}}).catch(error=>{if(!disposed)log('结果自动查询中断：'+error.message+'；可点击查询已提交任务。');});return response;
   }finally{setBusy(false);}
- },refresh(){try{workspace=readWorkspace(widget.value);project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;syncSettings();render();}catch(error){log('工程数据错误：'+error.message);}},dispose(){if(expanded)toggleExpanded(false);disposed=true;stop=true;progressTracker.dispose();downloader.dispose();dependencyController.dispose();finishingController.dispose();resourceEditor.dispose();commonResourceEditor.dispose();preview.dispose();document.removeEventListener('keydown',escape);placeholder?.remove();host.remove();}};states.set(node,state);render();
+ },refresh(){try{workspace=readWorkspace(widget.value);project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;syncSettings();render();}catch(error){log('工程数据错误：'+error.message);}},dispose(){if(expanded)toggleExpanded(false);disposed=true;stop=true;batchController.dispose();progressTracker.dispose();downloader.dispose();dependencyController.dispose();finishingController.dispose();resourceEditor.dispose();commonResourceEditor.dispose();preview.dispose();document.removeEventListener('keydown',escape);placeholder?.remove();host.remove();}};states.set(node,state);render();setTimeout(()=>{if(!disposed)void batchController.query({discover:true});},0);
 }
 app.registerExtension({name:'H3.Visual.Studio.Official',setup(){
  const send=api.queuePrompt.bind(api);

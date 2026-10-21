@@ -151,3 +151,45 @@ if PromptServer is not None:
             await asyncio.to_thread(downloads.auto_detect_proxy)
             return web.json_response(await asyncio.to_thread(dependency_manager.start,payload.get('keys')))
         except (ValueError,TypeError) as error:return web.json_response({'error':str(error)},status=400)
+
+# Background batches use only this server's loopback ComfyUI API, never a client URL.
+if PromptServer is not None:
+    from aiohttp import ClientSession, ClientTimeout
+    from .batch_jobs import BatchJobs
+    batch_connection={}
+    async def batch_call(method,path,payload=None):
+        if not batch_connection: raise ValueError("后台执行地址尚未初始化")
+        async with ClientSession(trust_env=False,timeout=ClientTimeout(total=120)) as session:
+            async with session.request(method,batch_connection["url"]+path,json=payload,ssl=False) as response:
+                data=await response.json()
+                if response.status>=500: raise ValueError("ComfyUI暂时不可用")
+                return data
+    async def batch_merge(clips):
+        return await asyncio.to_thread(merge,folder_paths.get_output_directory(),{"clips":clips})
+    batches=BatchJobs(Path(folder_paths.get_output_directory())/"H3_Studio_Batches",batch_call,batch_merge)
+    def batch_connect(request):
+        host,port,*_=request.transport.get_extra_info("sockname")
+        loopback="[::1]" if ":" in host else "127.0.0.1"
+        batch_connection["url"]=("https" if request.secure else "http")+"://"+loopback+":"+str(port)
+    @PromptServer.instance.routes.get("/h3_visual_studio/batches")
+    async def list_batches(request):
+        return web.json_response({"jobs":batches.list(request.query.get("pageId"))})
+    @PromptServer.instance.routes.post("/h3_visual_studio/batches")
+    async def start_batch(request):
+        try:
+            batch_connect(request)
+            return web.json_response(batches.start(await request.json()))
+        except (ValueError,TypeError,OSError) as error:
+            return web.json_response({"error":str(error)},status=400)
+    @PromptServer.instance.routes.get("/h3_visual_studio/batches/{batch_id}")
+    async def batch_status(request):
+        try: return web.json_response(batches.status(request.match_info["batch_id"]))
+        except ValueError as error: return web.json_response({"error":str(error)},status=404)
+    @PromptServer.instance.routes.post("/h3_visual_studio/batches/{batch_id}/{action}")
+    async def batch_action(request):
+        try:
+            batch_connect(request)
+            action=request.match_info["action"]
+            if action not in ("stop","resume"): raise ValueError("不支持的批次操作")
+            return web.json_response(getattr(batches,action)(request.match_info["batch_id"]))
+        except (ValueError,OSError) as error: return web.json_response({"error":str(error)},status=400)

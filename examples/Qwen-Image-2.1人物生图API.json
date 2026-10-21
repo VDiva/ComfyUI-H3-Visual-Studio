@@ -1,0 +1,104 @@
+{
+  "201": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "qwen_image_2.1_turbo_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "202": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_8b_w4a8.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    }
+  },
+  "203": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    }
+  },
+  "204": {
+    "class_type": "TextEncodeQwenImage21",
+    "inputs": {
+      "clip": [
+        "202",
+        0
+      ],
+      "prompt": "日本电视动画番剧角色设定图，清晰线稿，赛璐璐上色，人物身份与服装细节清楚，单个人物，全身或四分之三身，正面自然站姿，简洁中性灰背景。不要文字、水印、字幕、分镜拼贴或其他人物。\n人物：林川（身份标识S1，标识不画在图中）。\n成年男性，黑色短发，深灰外套白衬衫，单人全身，正面自然站姿。\n只描绘这一个人物。只输出画面，不写台词、姓名或说明文字。",
+      "negative_prompt": "",
+      "resolution": 1024
+    }
+  },
+  "206": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 768,
+      "height": 1024,
+      "batch_size": 1
+    }
+  },
+  "207": {
+    "class_type": "QwenImage21Cache",
+    "inputs": {
+      "model": [
+        "201",
+        0
+      ],
+      "device": "auto",
+      "dtype": "default"
+    }
+  },
+  "208": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "207",
+        0
+      ],
+      "positive": [
+        "204",
+        0
+      ],
+      "negative": [
+        "204",
+        1
+      ],
+      "latent_image": [
+        "206",
+        0
+      ],
+      "seed": 3288,
+      "steps": 8,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1
+    }
+  },
+  "209": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "208",
+        0
+      ],
+      "vae": [
+        "203",
+        0
+      ]
+    }
+  },
+  "210": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "209",
+        0
+      ],
+      "filename_prefix": "H3_Characters/Qwen人物参考/S1"
+    }
+  }
+}

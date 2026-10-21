@@ -1,8 +1,8 @@
-import {applyDirectorPreset} from './director-recipe.mjs?v=0.9.0';
-import {defaultSelfLift,selfLiftApi} from './selflift.mjs?v=0.9.1';
-import {defaultImageSettings,videoWithCharacters} from './characters.mjs?v=0.5.7';
-import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.9.0';
-import {defaultFinishing,finishApi,isOriginalVideo} from './finishing.mjs?v=0.9.0';
+import {applyDirectorPreset} from './director-recipe.mjs?v=0.12.0';
+import {defaultSelfLift,selfLiftApi} from './selflift.mjs?v=0.12.0';
+import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.12.0';
+import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.12.0';
+import {defaultFinishing,finishApi,isOriginalVideo} from './finishing.mjs?v=0.12.0';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];
@@ -13,7 +13,7 @@ export function readProject(raw) {
   const base=defaultProject();
   const value=typeof raw==='string' ? JSON.parse(raw || '{}') : structuredClone(raw || {});
   if(!value || typeof value!=='object' || Array.isArray(value))throw Error('工程必须为JSON对象');
-  const result={...base,...value,imageSettings:{...defaultImageSettings(),...value.imageSettings},settings:{...base.settings,...value.settings},media:{...base.media,...value.media}};
+  const result={...base,...value,imageSettings:normalizeImageSettings(value.imageSettings),settings:{...base.settings,...value.settings},media:{...base.media,...value.media}};
   // Missing presets adopt the current default; explicit saved choices remain unchanged.
   const finishing={...defaultFinishing(),...value.finishing};
   if(value.finishing?.defaultsVersion!==1)Object.assign(finishing,{defaultsVersion:1,refine:true,upscale:'latent',chunking:true,steps:4});

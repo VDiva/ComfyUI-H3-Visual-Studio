@@ -1,13 +1,27 @@
 """Disk-based FFmpeg concat. No torch or GPU decoding."""
 from pathlib import Path
-import os, subprocess, tempfile, uuid, threading, re
+import os, stat, subprocess, tempfile, uuid, threading, re
 _LOCK = threading.Lock()
+
+def ensure_executable(candidate):
+    if os.name == "nt" or os.access(candidate, os.X_OK):
+        return
+    try:
+        candidate.chmod(stat.S_IMODE(candidate.stat().st_mode) | 0o111)
+    except OSError as error:
+        raise ValueError(f"无法自动为内置FFmpeg添加执行权限：{candidate}；请检查文件所有权和目录是否只读") from error
+    if not os.access(candidate, os.X_OK):
+        raise ValueError(f"内置FFmpeg仍不可执行：{candidate}；请检查磁盘是否以noexec挂载，或改放到允许执行的目录")
+
 
 def ffmpeg_path():
     base = Path(__file__).resolve().parent / "ffmpeg"
     candidate = base / ("ffmpeg.exe" if os.name == "nt" else "ffmpeg")
     if not candidate.is_file():
-        raise ValueError(f"缺少内置FFmpeg：{candidate}；Linux云端请放Linux版本并赋予执行权限")
+        raise ValueError(f"缺少内置FFmpeg：{candidate}；Linux云端请放Linux版本")
+    if not candidate.resolve().is_relative_to(base.resolve()):
+        raise ValueError("内置FFmpeg路径越界，未修改权限")
+    ensure_executable(candidate)
     return str(candidate)
 
 def resolve_clip(root, row):
