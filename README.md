@@ -1,4 +1,4 @@
-# H3 可视化工作室 0.15.0
+# H3 可视化工作室 0.15.1
 
 使用 AIMixer / MiniMax H3 Director 开源内核，保留工作室的分段编辑、目录导入、公共素材、人物生图、后台批次、对比、视频处理和更新界面。
 
@@ -49,5 +49,7 @@
 ## 文件说明
 
 根目录的model-catalog.json用于模型下载，version.json用于插件更新，均为运行必需文件。web/workflow-template.mjs是内置启动模板；tests/.fixtures中的JSON仅供测试。旧版工作流导出、历史说明、调研和旧FFmpeg构建说明已移出插件；不再附带examples目录。标准目录与AI交付规范.md由目录模板引用，予以保留。
+
+每次发布更新必须递增version.json中的版本号，并同步工作室显示版本、前端模块的?v=缓存版本和本说明标题；发布前运行tests/distribution.py检查版本一致性。完整源码上传到GitHub后，云端插件才能检测并下载此版本。
 
 0.14.3补回并保留Git中的两份测试JSON；源码完整性检查允许Git换行转换；更新包校验涵盖Director清单内的Python文件、适配器、关键前端和许可证。前端模块引用可用 `node --experimental-vm-modules tests/module-links.mjs` 单独检查。

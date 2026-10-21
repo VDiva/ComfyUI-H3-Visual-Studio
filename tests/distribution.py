@@ -2,6 +2,9 @@
 from pathlib import Path
 import hashlib,json,re,ast
 root=Path(__file__).resolve().parents[1]
+release=json.loads((root/'version.json').read_text(encoding='utf-8-sig'))['version']
+assert (root/'README.md').read_text(encoding='utf-8-sig').splitlines()[0].endswith(' '+release)
+assert 'v'+release+'</span>' in (root/'web/studio-runtime.mjs').read_text(encoding='utf-8-sig')
 core=root/'director_core'
 license=(root/'LICENSE').read_bytes()
 assert license==(core/'LICENSE').read_bytes()
@@ -21,6 +24,7 @@ for name in ['selflift.py','latent_upscale.py','director_latent_upscale.py','dir
 for file in (root/'web').iterdir():
  if file.suffix not in {'.js','.mjs'}:continue
  text=file.read_text(encoding='utf-8-sig')
+ for cached in re.findall(r'\?v=(\d+\.\d+\.\d+)',text):assert cached==release,(file.name,cached,release)
  for ref in re.findall(r"(?:from\s+|import\s*)['\"](\./[^'\"]+)",text):
   assert (file.parent/ref.split('?')[0]).is_file(),(file.name,ref)
  assert 'finishApi' not in text and 'selfLiftApi' not in text,file.name

@@ -1,4 +1,4 @@
-import {finishingSettings,finishingCanvas} from './finishing.mjs?v=0.15.0';
+import {finishingSettings,finishingCanvas} from './finishing.mjs?v=0.15.1';
 
 // Compile Studio projects to the bundled Director executor, keeping the selected
 // model/LoRA graph as the source of truth. No upstream timeline UI is required.
