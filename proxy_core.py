@@ -64,6 +64,8 @@ class ProxyCore:
    return {'state':self.state,'busy':self.busy,'message':self.message,'installed':bool(self.executable()),'version':VERSION,
            'subscribed':bool(self.settings.get('subscription')),'running':self.process is not None,
            'nodes':list(self.nodes),'selected':self.selected,'progress':self.progress,
+           'download_attached':self.process is not None and self.downloads.proxy_address==self.address,
+           'download_source':getattr(self.downloads,'source_mode','auto'),
            'proxy':self.address if self.process is not None else ''}
 
  @property
@@ -98,7 +100,7 @@ class ProxyCore:
     began=time.monotonic();op=urllib.request.build_opener(urllib.request.ProxyHandler({'https':self.address})).open
     with op(urllib.request.Request('https://huggingface.co/api/models/Comfy-Org/MiniMax-H3',method='HEAD'),timeout=12) as response:
      if response.status!=200:raise ValueError('代理测试失败，请切换节点')
-    self.message='Hugging Face连接成功，约'+str(round((time.monotonic()-began)*1000))+' ms'
+    self.message='所选节点可连接Hugging Face，约'+str(round((time.monotonic()-began)*1000))+' ms；此测试不代表模型文件下载成功。请选官方源并重试失败项，已建立的下载连接不会切换'
   except ValueError as error:self.message=str(error)
   except Exception:self.message='操作失败：请检查网络、订阅兼容性或节点可用性；订阅链接不会显示在错误中'
   finally:

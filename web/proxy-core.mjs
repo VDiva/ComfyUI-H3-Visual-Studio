@@ -15,8 +15,12 @@ export function mountProxyCore({api,container,log}){
    for(const name of names){const option=document.createElement('option');option.value=name;option.textContent=name;$('proxy-node').append(option);}
   }
   $('proxy-node').value=data.selected||'';
+  if(data.running){
+   const source={auto:'自动：仙宫云优先，回退官方源才使用代理',xiangongyun:'仙宫云：直连，不经过代理',official:'官方源：新建下载连接使用代理'}[data.download_source]||'下载源状态未知';
+   $('proxy-core-status').textContent+='\n'+(data.download_attached===false?'下载代理未接管，可能被手动代理设置覆盖；请停止后重新开启。':data.download_attached===true?'已接管插件下载代理。':'')+' '+source+'。开启或切换节点后，已有下载连接不会立即重连；请重试失败项。';
+  }
  }
- function schedule(){clearTimeout(timer);if(!disposed&&box.isConnected&&state?.busy)timer=setTimeout(refresh,1200);}
+ function schedule(){clearTimeout(timer);if(!disposed&&box.isConnected&&(state?.busy||state?.running))timer=setTimeout(refresh,state?.busy?1200:5000);}
  async function refresh(){if(disposed)return;try{const response=await api.fetchApi('/h3_visual_studio/proxy-core');if(!response.ok)throw Error('代理管理不可用，请更新完整插件并重启ComfyUI');paint(await response.json());schedule();}catch(error){$('proxy-core-status').textContent=error.message;}}
  async function act(action,extra={}){if(requesting||disposed)return;requesting=true;if(state)paint(state);
   try{const response=await api.fetchApi('/h3_visual_studio/proxy-core',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...extra})});const data=await response.json();if(!response.ok)throw Error(data.error||'代理操作失败');if(action==='subscribe')$('proxy-subscription').value='';paint(data);}

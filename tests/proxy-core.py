@@ -54,6 +54,7 @@ with tempfile.TemporaryDirectory() as temp:
    return {}
   core._api=api;core.start()
   assert core.snapshot()['running'] and d.proxy_address.startswith('http://127.0.0.1:')
+  assert core.snapshot()['download_attached'] is True
   assert core.secret and core.secret not in json.dumps(core.snapshot())
   assert 'PRIVATE_TEST_TOKEN' not in json.dumps(core.snapshot())
   assert secret_url not in str(core.process.args) and core.process.kwargs.get('shell') is None
@@ -66,7 +67,8 @@ with tempfile.TemporaryDirectory() as temp:
   core.stop();assert d.proxy_address=='http://127.0.0.1:7890'
   core.start();managed=d.proxy_address
   # A manual user override is not overwritten when the managed core stops.
-  d.configure_proxy('http://127.0.0.1:9999');core.stop();assert d.proxy_address=='http://127.0.0.1:9999'
+  d.configure_proxy('http://127.0.0.1:9999');assert core.snapshot()['download_attached'] is False
+  core.stop();assert d.proxy_address=='http://127.0.0.1:9999'
   core.start();core.process.code=1;assert not core.snapshot()['running'];assert d.proxy_address=='http://127.0.0.1:9999'
   core.start();managed=d.proxy_address
   # Simulated server restart: do not re-use a stale managed localhost endpoint.
