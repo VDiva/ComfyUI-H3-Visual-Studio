@@ -4,7 +4,7 @@ export function executionProgress({api,show,now=()=>performance.now()/1000,setIn
  stages.H3StudioDirectorGroup='准备导演台参考素材';
  stages.H3StudioDirectorRefine='准备导演台二采设置';
  stages.H3StudioDirectorSelfLift='准备导演台SelfLift设置';
- let active=null,node=null,graph={},context='',last='',frames=null;
+ let active=null,node=null,graph={},context='',last='',frames=null,suspended=false;
  let measurement=null,baseText='',directorPhase=null,timer=null;
  const duration=seconds=>seconds>=60?Math.floor(seconds/60)+'分'+Math.floor(seconds%60)+'秒':Math.floor(seconds)+'秒';
  const render=()=>{
@@ -29,7 +29,7 @@ export function executionProgress({api,show,now=()=>performance.now()/1000,setIn
   else{const m=measurement;if(value>m.value){const sample=(now()-m.changed)/(value-m.value);if(sample>0)m.rate=m.rate?m.rate*.6+sample*.4:sample;m.changed=now();}m.value=value;m.max=max;}
   if(timer===null)timer=setIntervalFn(()=>{if(active&&measurement)render();},1000);
  };
- const matches=d=>active&&(!d.prompt_id||String(d.prompt_id)===active);
+ const matches=d=>!suspended&&active&&(!d.prompt_id||String(d.prompt_id)===active);
  const name=()=>{const type=graph[String(node)]?.class_type;return stages[type]||type||('执行节点 '+node);};
  const executing=e=>{const d=e.detail||{};if(!matches(d))return;if(d.node==null){reset();emit('节点执行结束，等待结果确认');active=null;return;}if(String(node)!==String(d.node)){frames=null;reset();}node=d.node;emit(name()+'（节点 '+node+'）');};
  const frameProgress=e=>{const d=e.detail||{};if(!matches(d)||!d.prompt_id||!Number.isInteger(d.value)||!Number.isInteger(d.max)||d.max<=0||d.value<0||d.value>d.max)return;node=d.node;frames=d;const eta=d.value>0&&d.value<d.max?' · 预计剩余约'+Math.ceil(d.elapsed/d.value*(d.max-d.value)/60)+'分钟':'';emit('AI模型超分 · 已完成 '+d.value+'/'+d.max+' 帧（'+Math.floor(d.value/d.max*100)+'%）'+(d.value<d.max?' · 正在处理第'+(d.value+1)+'帧':' · 正在整理输出帧')+eta);};
@@ -52,5 +52,5 @@ export function executionProgress({api,show,now=()=>performance.now()/1000,setIn
  const listeners=[['execution_start',start],['executing',executing],['progress',progress],['minimax_director_progress',directorProgress],['h3_frame_progress',frameProgress],['execution_error',failure],['execution_interrupted',failure]];
  const recent=new Map();const subscriptions=listeners.map(([event,fn])=>[event,e=>{const id=e.detail?.prompt_id;if(id){let events=recent.get(String(id))||[];events=events.filter(item=>item.event!==event);events.push({event,detail:e.detail});recent.set(String(id),events);if(recent.size>20)recent.delete(recent.keys().next().value);}fn(e);}]);
  for(const [event,fn] of subscriptions)api.addEventListener(event,fn);
- return {syncQueue(id,prompt,title,queued=true){this.watch(id,prompt,title,queued);if(active===String(id)&&node===null)emit(queued?'排队等待执行（服务器队列已确认）':'服务器已开始执行，等待节点进度；可能正在加载模型，长时间不变请查看ComfyUI日志');},watch(id,prompt,title='当前任务',queued=true){if(String(id)===active){if(prompt)graph=prompt;return;}reset();active=String(id);node=null;frames=null;graph=prompt||{};context=title;emit(queued?'排队等待执行':'执行中，等待节点进度');for(const item of recent.get(active)||[]){const handler=listeners.find(([event])=>event===item.event)?.[1];handler?.({detail:item.detail});}},finish(id){if(String(id)===active){reset();emit('执行结束，请查看任务结果');active=null;node=null;}},dispose(){reset();for(const [event,fn] of subscriptions)api.removeEventListener(event,fn);recent.clear();active=null;},get text(){return last;}};
+ return {connectionLost(text){reset();suspended=true;emit(text);},connectionRestored(){suspended=false;reset();emit('连接已恢复，等待核对任务状态；此前计时已停止');},syncQueue(id,prompt,title,queued=true){if(suspended)return;this.watch(id,prompt,title,queued);if(active===String(id)&&node===null)emit(queued?'排队等待执行（服务器队列已确认）':'服务器已开始执行，等待节点进度；可能正在加载模型，长时间不变请查看ComfyUI日志');},watch(id,prompt,title='当前任务',queued=true){if(String(id)===active){if(prompt)graph=prompt;return;}reset();suspended=false;active=String(id);node=null;frames=null;graph=prompt||{};context=title;emit(queued?'排队等待执行':'执行中，等待节点进度');for(const item of recent.get(active)||[]){const handler=listeners.find(([event])=>event===item.event)?.[1];handler?.({detail:item.detail});}},finish(id){if(String(id)===active){reset();emit('执行结束，请查看任务结果');active=null;node=null;}},dispose(){reset();for(const [event,fn] of subscriptions)api.removeEventListener(event,fn);recent.clear();active=null;},get text(){return last;}};
 }

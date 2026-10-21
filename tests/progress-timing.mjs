@@ -14,5 +14,8 @@ clock=40;tick();assert.match(text,/重估中/);assert.equal(detail.value,1); // 
 clock=41;phase(.5);assert.match(text,/正在第 3 步/);assert.equal(detail.value,2);
 clock=50;phase(0,'sample');assert.equal(detail.value,0);assert.match(text,/本阶段已用 0秒/);assert.doesNotMatch(text,/平均/);
 const before=text;send('minimax_director_progress',{prompt_id:'other',node_id:'1',phase:'refine',phase_value:1,phase_max:1});assert.equal(text,before);
+tracker.connectionLost('服务失联');const frozen=text;clock=100;tick();assert.equal(text,frozen);assert.equal(detail,null);
+tracker.syncQueue('ours',null,'title',false);assert.equal(text,frozen);
+tracker.connectionRestored();assert.match(text,/连接已恢复/);phase(0);assert.match(text,/本阶段已用 0秒/);
 tracker.finish('ours');assert.ok(cleared>0);assert.equal(detail,null);tracker.dispose();
 console.log('PASS real stage/step counters, live elapsed time, ETA, stalled-step re-estimation, phase reset, task isolation and timer cleanup');
