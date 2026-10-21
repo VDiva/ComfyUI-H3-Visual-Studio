@@ -74,8 +74,8 @@ def unpack(data,destination,subdir):
     return info,managed
 
 class PluginUpdater:
-    def __init__(self,root,opener=urllib.request.urlopen,busy=lambda:None,prepare=lambda:None):
-        self.root=Path(root).resolve();self.opener=opener;self.busy=busy;self.prepare=prepare
+    def __init__(self,root,opener=urllib.request.urlopen,busy=lambda:None,prepare=lambda:None,before_install=lambda:None):
+        self.root=Path(root).resolve();self.opener=opener;self.busy=busy;self.prepare=prepare;self.before_install=before_install
         self.lock=threading.RLock();self.candidate=None;self.worker=None
         self.current=manifest(json.loads((self.root/'version.json').read_text(encoding='utf-8-sig')))
         self.state={"state":"idle","message":"点击检查更新，从指定GitHub仓库获取最新提交"}
@@ -180,6 +180,9 @@ class PluginUpdater:
             incoming.mkdir()
             info,managed=unpack(bytes(payload),incoming,selected['subdir'])
             if info['version']!=selected['version']:raise ValueError("更新包版本与检查结果不一致")
+            # Keep the proxy alive for every GitHub request, then stop an owned
+            # core before copying/swapping its executable and private settings.
+            self.before_install()
             self.update(state='installing',message='正在暂存新插件，保留本地配置和备份')
             shutil.copytree(self.root,stage,symlinks=True)
             try:previous=json.loads((self.root/STATE_FILE).read_text(encoding='utf-8')).get('managed',[])

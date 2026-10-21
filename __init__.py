@@ -254,7 +254,7 @@ if PromptServer is not None:
     from .plugin_update import PluginUpdater
     from .merge_video import _LOCK as merge_lock
     def plugin_busy_reason():
-        if proxy_core.busy or proxy_core.process is not None:return '请先完成代理操作并停止Mihomo内核，再更新插件'
+        if proxy_core.busy:return '请先等待代理操作完成，再更新插件；已开启的代理可用于下载更新包'
         if PromptServer.instance.prompt_queue.get_tasks_remaining()>0:return "请等待ComfyUI生成队列结束后再更新插件"
         if any(j.get('state') in {'queued','running','merging','paused'} for j in list(batches.jobs.values())):return "请先完成或停止后台批次，再更新插件"
         if merge_lock.locked():return "FFmpeg正在合并，请完成后再更新插件"
@@ -262,7 +262,7 @@ if PromptServer is not None:
         if any(j.get('state') not in {'done','error','stopped'} for j in list(downloads.jobs.values())):return "模型正在下载，请完成后再更新插件"
         if any(j.get('state') in {'queued','installing'} for j in list(dependency_manager.jobs.values())):return "依赖正在安装，请完成后再更新插件"
         return None
-    plugin_updater=PluginUpdater(Path(__file__).resolve().parent,opener=lambda *a,**kw:downloads.opener(*a,**kw),busy=plugin_busy_reason,prepare=lambda:downloads.auto_detect_proxy())
+    plugin_updater=PluginUpdater(Path(__file__).resolve().parent,opener=lambda *a,**kw:downloads.opener(*a,**kw),busy=plugin_busy_reason,prepare=lambda:downloads.auto_detect_proxy(),before_install=proxy_core.stop)
     @PromptServer.instance.routes.get('/h3_visual_studio/plugin-update')
     async def plugin_update_status(request):return web.json_response(plugin_updater.snapshot())
     @PromptServer.instance.routes.post('/h3_visual_studio/plugin-update/check')

@@ -1,9 +1,9 @@
-import {applyDirectorPreset} from './director-recipe.mjs?v=0.15.2';
-import {directorCoreRequest} from './director-core.mjs?v=0.15.2';
-import {defaultSelfLift} from './selflift.mjs?v=0.15.2';
-import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.15.2';
-import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.15.2';
-import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.15.2';
+import {applyDirectorPreset} from './director-recipe.mjs?v=0.15.3';
+import {directorCoreRequest} from './director-core.mjs?v=0.15.3';
+import {defaultSelfLift} from './selflift.mjs?v=0.15.3';
+import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.15.3';
+import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.15.3';
+import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.15.3';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];

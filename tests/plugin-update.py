@@ -37,6 +37,21 @@ def local(parent):
 
 def ready(updater):
  updater.check();updater.worker.join(5);assert updater.snapshot()['state']=='available',updater.snapshot()
+with tempfile.TemporaryDirectory() as tmp:
+ folder=local(tmp);private=folder/'.h3-mihomo';private.mkdir();(private/'settings.local.json').write_text('subscription fixture');(private/'mihomo').write_text('core fixture')
+ active=[True];calls=[];github=GitHub()
+ def proxied(request,timeout=60):
+  assert active[0],'GitHub request after proxy stopped'
+  calls.append(request.full_url);return github(request,timeout)
+ def stop_proxy():
+  assert any('codeload.github.com' in url for url in calls)
+  assert (folder/'__init__.py').read_text()=='VALUE="old"'
+  active[0]=False;(folder/'download-proxy.json').write_text('restored proxy')
+ updater=m.PluginUpdater(folder,opener=proxied,before_install=stop_proxy);ready(updater);updater.install(SHA);updater.worker.join(5)
+ assert updater.snapshot()['state']=='restart_required',updater.snapshot()
+ assert not active[0] and (folder/'download-proxy.json').read_text()=='restored proxy'
+ assert (private/'settings.local.json').read_text()=='subscription fixture' and (private/'mihomo').read_text()=='core fixture'
+print('PASS proxy retained for GitHub requests, stopped before replacement, restored proxy/subscription/core preserved')
 for layout in ('',m.PROJECT):
  with tempfile.TemporaryDirectory() as tmp:
   folder=local(tmp);updater=m.PluginUpdater(folder,opener=GitHub(subdir=layout));ready(updater);updater.install(SHA);updater.worker.join(5);s=updater.snapshot();assert s['state']=='restart_required',s
