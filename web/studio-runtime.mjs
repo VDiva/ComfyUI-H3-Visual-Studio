@@ -1,27 +1,27 @@
-import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.10';
-import {mountProxyCore} from './proxy-core.mjs?v=0.15.10';
-import {backgroundBatch} from './background-batch.mjs?v=0.15.10';
-import {generationSummary} from './generation-summary.mjs?v=0.15.10';
-import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.10';
-import {openVideoCompare} from './video-compare.mjs?v=0.15.10';
-import {mountDependencies} from './dependencies.mjs?v=0.15.10';
-import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.10';
-import {mountSelfLift} from './selflift.mjs?v=0.15.10';
-import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.10';
-import {executionProgress} from './execution-progress.mjs?v=0.15.10';
-import {mountExecutionHealth} from './execution-health.mjs?v=0.15.10';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.10';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.15.10';
-import {openFolderTemplate} from './folder-template.mjs?v=0.15.10';
-import {livePreview} from './live-preview.mjs?v=0.15.10';
-import {modelDownloader} from './model-download.mjs?v=0.15.10';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.10';
-import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.10';
+import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.11';
+import {mountProxyCore} from './proxy-core.mjs?v=0.15.11';
+import {backgroundBatch} from './background-batch.mjs?v=0.15.11';
+import {generationSummary} from './generation-summary.mjs?v=0.15.11';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.11';
+import {openVideoCompare} from './video-compare.mjs?v=0.15.11';
+import {mountDependencies} from './dependencies.mjs?v=0.15.11';
+import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.11';
+import {mountSelfLift} from './selflift.mjs?v=0.15.11';
+import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.11';
+import {executionProgress} from './execution-progress.mjs?v=0.15.11';
+import {mountExecutionHealth} from './execution-health.mjs?v=0.15.11';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.11';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.15.11';
+import {openFolderTemplate} from './folder-template.mjs?v=0.15.11';
+import {livePreview} from './live-preview.mjs?v=0.15.11';
+import {modelDownloader} from './model-download.mjs?v=0.15.11';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.11';
+import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.11';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.10';
-import './folder-core.js?v=0.15.10';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.10';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.11';
+import './folder-core.js?v=0.15.11';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.11';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -53,7 +53,7 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.10</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.11</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组导演台API</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
@@ -101,14 +101,14 @@ function attach(node){
  const previewStep=document.createElement('div');previewStep.style.cssText='white-space:pre-wrap;color:#8aefcf;font-weight:600;padding:8px 0';previewStep.textContent='当前步骤：等待任务';$('live-label').before(previewStep);
  const stageBar=document.createElement('progress');stageBar.style.cssText='width:100%;height:14px;display:none';stageBar.setAttribute('aria-label','当前阶段实际进度');previewStep.after(stageBar);
  const progressTracker=executionProgress({api,show:(text,detail)=>{stepStatus.textContent='当前步骤：'+text;previewStep.textContent='当前步骤：'+text;stageBar.style.display=detail?'block':'none';if(detail){stageBar.max=detail.max;stageBar.value=detail.value;stageBar.title=detail.label+'：'+(detail.value/detail.max*100).toFixed(1)+'%';}}});
- function setBusy(value){busy=value;$('add-page').disabled=value;$('delete-page').disabled=value||batchController.active||pluginUpdateBlocked();$('edit').disabled=value||batchController.active||pluginUpdateBlocked();for(const id of ['run','run-one'])$(id).disabled=value||batchController.active||pluginUpdateBlocked();$('resume').disabled=value;$('merge').disabled=value||batchController.active;compareButton.disabled=value||batchController.active||pluginUpdateBlocked();$('stop').disabled=!value&&!batchController.active;}
+ function setBusy(value){busy=value;$('add-page').disabled=value;$('delete-page').disabled=value||batchController.active||pluginUpdateBlocked();$('edit').disabled=value||batchController.active||pluginUpdateBlocked();for(const id of ['run','run-one'])$(id).disabled=value||batchController.active||batchController.needsRecovery||pluginUpdateBlocked();$('resume').disabled=value;$('merge').disabled=value||batchController.active;compareButton.disabled=value||batchController.active||batchController.needsRecovery||pluginUpdateBlocked();$('stop').disabled=!value&&!batchController.active;}
  function current(){return project.groups[selected];}
 
  let lastBatchPrompt=null;
  const batchController=backgroundBatch({api,getPage:()=>project,persist,log,onUpdate:(page,job)=>{
   if(page!==project)return;
   const counts=job.items.filter(i=>i.state==='done').length;
-  batchInfo.textContent=`后台批次：${({queued:'排队',running:'执行中',merging:'合并中',done:'已完成',stopped:'已停止后续提交',paused:'暂停',error:'失败'})[job.state]||job.state} · ${counts}/${job.items.length}`+(job.error?' · '+job.error:'');
+  batchInfo.textContent=`后台批次：${({queued:'排队',running:'执行中',disconnected:'服务异常，已暂停，待核对',merging:'合并中',done:'已完成',stopped:'已停止后续提交',paused:'暂停',error:'失败'})[job.state]||job.state} · ${counts}/${job.items.length}`+(job.error?' · '+job.error:'');
   batchResume.hidden=job.state!=='paused';
   const running=job.items.find(i=>['running','queued'].includes(i.state)&&i.promptId);
   if(running){
@@ -120,7 +120,7 @@ function attach(node){
   }
   render();setBusy(busy);
  }});
- const executionHealth=mountExecutionHealth({api,container:root.querySelector('.shell'),isBusy:()=>busy||batchController.active,owns:id=>!!id&&(id===lastBatchPrompt||workspace.pages.some(p=>p.groups.some(g=>g.job?.promptId===id)||p.characters.some(c=>c.imageJob?.promptId===id))),onUnavailable:text=>progressTracker.connectionLost(text),onRecovered:()=>progressTracker.connectionRestored()});
+ const executionHealth=mountExecutionHealth({api,container:root.querySelector('.shell'),isBusy:()=>busy||batchController.active||batchController.needsRecovery,owns:id=>!!id&&(id===lastBatchPrompt||workspace.pages.some(p=>p.groups.some(g=>g.job?.promptId===id)||p.characters.some(c=>c.imageJob?.promptId===id))),onUnavailable:text=>{progressTracker.connectionLost(text);stop=true;batchController.suspend(text);setBusy(false);render();},onRecovered:()=>progressTracker.connectionRestored()});
  batchResume.onclick=()=>{void batchController.action('resume').catch(e=>log(e.message));};
  const updater=mountPluginUpdater({container:panels.models,api,log,onState:()=>setBusy(busy)});
  const updateButton=document.createElement('button');updateButton.id='check-plugin-update';updateButton.textContent='检查更新';updateButton.onclick=()=>{showPanel('models');void updater.check();};fileActions.append(updateButton);
@@ -332,7 +332,7 @@ function attach(node){
  }
  $('merge').onclick=async()=>{if(busy||batchController.active)return;setBusy(true);try{await mergeGroups(project.groups.filter(g=>g.selected!==false));}catch(error){log(error.message);}finally{setBusy(false);}};
  async function run(one){
-  if(busy||batchController.active||pluginUpdateBlocked()){log('插件更新中或此页有未结束后台批次，请先查询或停止后续提交。');return;}const chosen=one?[current()]:project.groups.filter(g=>g.selected!==false);if(!chosen.length||!chosen[0]){log('请先选择素材组');return;}
+  if(busy||batchController.active||batchController.needsRecovery||pluginUpdateBlocked()){log('插件更新中或此页有未结束后台批次，请先查询或停止后续提交。');return;}const chosen=one?[current()]:project.groups.filter(g=>g.selected!==false);if(!chosen.length||!chosen[0]){log('请先选择素材组');return;}
   setBusy(true);stop=false;
   try{persist();const graph=await app.graphToPrompt();await checkAllModels(graph);await ensureCharacterImages(chosen,graph);if(stop||disposed)throw Error('已停止后续生成');const snapshot=structuredClone(project);const requests=new Map();for(const g of chosen){const copy=snapshot.groups.find(v=>v.id===g.id);requests.set(g.id,compileRequest(graph.output,snapshot,copy));}
    const items=chosen.map(g=>{const request=requests.get(g.id),workflow=structuredClone(graph.workflow);workflow.extra ||= {};workflow.extra.h3_visual_request={pageId:project.pageId,groupId:g.id,groupNumber:g.number};return {groupId:g.id,label:'分段'+g.number,prompt:request.prompt,workflow};});
@@ -361,8 +361,8 @@ function attach(node){
  // Keep editor clicks/focus inside the panel instead of selecting the canvas
  // node and triggering inspector-driven widget re-layout on every tab switch.
  for(const event of ['pointerdown','pointerup','mousedown','mouseup','click','dblclick','keydown'])host.addEventListener(event,e=>e.stopPropagation());
- const state={installModels,importChapters,getMode:()=>project.mode,isBusy:()=>busy||pluginUpdateBlocked()||workspace.pages.some(p=>['submitting','unknown','queued','running','merging','paused'].includes(p.batch?.state)),async queueCurrent(number,data,send,options){
-  if(busy||batchController.active||pluginUpdateBlocked())throw Error('插件更新中或可视化工作室已有任务或后台批次，请等待或停止后续提交');
+ const state={installModels,importChapters,getMode:()=>project.mode,isBusy:()=>busy||pluginUpdateBlocked()||workspace.pages.some(p=>['submitting','unknown','queued','running','merging'].includes(p.batch?.state)),async queueCurrent(number,data,send,options){
+  if(busy||batchController.active||batchController.needsRecovery||pluginUpdateBlocked())throw Error('插件更新中或可视化工作室已有任务或后台批次，请等待或停止后续提交');
   const g=current();if(!g)throw Error('请先在可视化工作室中导入素材或添加分组');
   setBusy(true);stop=false;
   try{
