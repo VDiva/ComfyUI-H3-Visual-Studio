@@ -1,26 +1,26 @@
-import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.3';
-import {mountProxyCore} from './proxy-core.mjs?v=0.15.3';
-import {backgroundBatch} from './background-batch.mjs?v=0.15.3';
-import {generationSummary} from './generation-summary.mjs?v=0.15.3';
-import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.3';
-import {openVideoCompare} from './video-compare.mjs?v=0.15.3';
-import {mountDependencies} from './dependencies.mjs?v=0.15.3';
-import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.3';
-import {mountSelfLift} from './selflift.mjs?v=0.15.3';
-import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.3';
-import {executionProgress} from './execution-progress.mjs?v=0.15.3';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.3';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.15.3';
-import {openFolderTemplate} from './folder-template.mjs?v=0.15.3';
-import {livePreview} from './live-preview.mjs?v=0.15.3';
-import {modelDownloader} from './model-download.mjs?v=0.15.3';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.3';
-import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.3';
+import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.4';
+import {mountProxyCore} from './proxy-core.mjs?v=0.15.4';
+import {backgroundBatch} from './background-batch.mjs?v=0.15.4';
+import {generationSummary} from './generation-summary.mjs?v=0.15.4';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.4';
+import {openVideoCompare} from './video-compare.mjs?v=0.15.4';
+import {mountDependencies} from './dependencies.mjs?v=0.15.4';
+import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.4';
+import {mountSelfLift} from './selflift.mjs?v=0.15.4';
+import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.4';
+import {executionProgress} from './execution-progress.mjs?v=0.15.4';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.4';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.15.4';
+import {openFolderTemplate} from './folder-template.mjs?v=0.15.4';
+import {livePreview} from './live-preview.mjs?v=0.15.4';
+import {modelDownloader} from './model-download.mjs?v=0.15.4';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.4';
+import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.4';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.3';
-import './folder-core.js?v=0.15.3';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.3';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.4';
+import './folder-core.js?v=0.15.4';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.4';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -52,7 +52,7 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.3</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.4</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组导演台API</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
@@ -226,7 +226,7 @@ function attach(node){
  }
  $('folder').onclick=()=>$('folder-input').click();
  async function chapterPage(chapter,mode=project.mode){
-  const next=defaultProject();next.pageId=uuid();next.name=chapter.name.split('/').at(-1);next.sourcePath=chapter.name;next.settings={...project.settings,steps:8,sampler:'euler',acceleration:'inherit'};next.mode=mode;next.imageSettings=structuredClone(project.imageSettings);next.finishing={...structuredClone(project.finishing),refine:false,upscale:'off'};next.audioReference=project.audioReference;applyDirectorPreset(next,false);const maps={images:new Map(),audios:new Map(),videos:new Map()};
+  const next=defaultProject();next.pageId=uuid();next.name=chapter.name.split('/').at(-1);next.sourcePath=chapter.name;next.settings={...project.settings,steps:8,sampler:'euler',acceleration:'inherit'};next.mode=mode;next.imageSettings=structuredClone(project.imageSettings);next.finishing={...structuredClone(project.finishing),refine:false,upscale:'off'};next.audioReference=project.audioReference;applyDirectorPreset(next,true);const maps={images:new Map(),audios:new Map(),videos:new Map()};
   for(const [key,shared,local] of [['images','sharedImages','images'],['audios','sharedAudios','audios'],['videos','sharedVideos','videos']]){
    const list=chapter[shared]||[];
    for(const [i,file] of list.entries()){log(`${next.name}：公共${key} ${i+1}/${list.length} 上传中`);const value=await upload(file);next.media[key].push({id:i+1,name:file.name,file:value});maps[key].set(file,i+1);}

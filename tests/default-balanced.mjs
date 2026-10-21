@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {defaultProject,readProject,compileRequest} from '../web/project.mjs';
 import {applyDirectorPreset} from '../web/director-recipe.mjs';
-for(const initial of [defaultProject(),readProject({})]){
+for(const initial of [defaultProject(),readProject({}),readProject({finishing:{defaultsVersion:1,refine:true}})]){
  assert.equal(initial.finishing.dualModel,true);assert.equal(initial.finishing.megapixels,2);assert.equal(initial.settings.sageAttention,true);
  assert.equal(initial.settings.directorBaseModel,'minimax_h3_fl2va_pruned_int8_convrot.safetensors');
 }
