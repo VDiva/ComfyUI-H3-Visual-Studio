@@ -19,6 +19,9 @@ def load_catalog():
     rows = [row for row in rows if row.get("key") != DMAD_MODEL["key"]]
     return [dict(DMAD_MODEL)] + rows
 CATALOG = load_catalog()
+
+class DownloadStopped(Exception):
+    pass
 def download_error(error, stage):
     prefix="["+stage+"] "
     if isinstance(error, urllib.error.HTTPError):
@@ -106,6 +109,7 @@ class Downloads:
             }) or isinstance(error, ssl.SSLError)
 
     def open_source(self, request, key, timeout=60):
+        self.check_stopped(key)
         # Try the cloud mirror directly first; only official requests use proxy
         # detection and HF credentials. The first real request is the probe.
         parsed=urllib.parse.urlsplit(request.full_url)
@@ -132,6 +136,7 @@ class Downloads:
                 self.update(key, download_source="official",reset_mirror_prefix=True,
                             error="仙宫云线路不可用，切换Hugging Face官方源")
         self.auto_detect_proxy()
+        self.check_stopped(key)
         return self.opener(request, timeout=timeout)
 
     def configure_source(self, mode):
@@ -174,14 +179,28 @@ class Downloads:
                 result[key]=value
             return result
     def update(self, key, **values):
-        with self.lock: self.jobs[key].update(values)
+        with self.lock:
+            if self.jobs[key].get('stop_requested') and values.get('state') in {'queued','connecting','downloading','verifying','retrying'}:values['state']='stopping'
+            self.jobs[key].update(values)
+    def check_stopped(self,key):
+        with self.lock:
+            if self.jobs[key].get('stop_requested'):raise DownloadStopped()
+    def stop(self, keys=None):
+        if keys is not None and (not isinstance(keys,list) or not keys or any(not isinstance(k,str) for k in keys)):raise ValueError('请选择要停止的下载')
+        with self.lock:
+            if keys is not None and any(k not in self.jobs for k in keys):raise ValueError('下载任务不存在')
+            for key in (keys if keys is not None else list(self.jobs)):
+                job=self.jobs[key]
+                if job.get('state') in {'queued','connecting','downloading','verifying','retrying','stopping'}:
+                    job.update(stop_requested=True,state='stopping',error='正在停止；等待当前网络读写返回，断点将保留')
+        return self.status()
     def start(self, keys):
         if not isinstance(keys,list) or not keys or len(keys)>32: raise ValueError("请选择模型")
         catalog={m["key"]:m for m in load_catalog()}
         if any(not isinstance(k,str) or k not in catalog for k in keys): raise ValueError("模型没有已核实的下载地址，不能自动下载")
         for key in dict.fromkeys(keys):
             with self.lock:
-                if self.jobs.get(key,{}).get("state") in {"queued","connecting","downloading","verifying","retrying"}: continue
+                if self.jobs.get(key,{}).get("state") in {"queued","connecting","downloading","verifying","retrying","stopping"}: continue
                 self.rates.pop(key,None)
                 self.jobs[key]={"state":"queued","bytes":0,"total":catalog[key]["size"],"error":"","source_mode":self.source_mode}
             self.pool.submit(self.run,catalog[key])
@@ -189,6 +208,7 @@ class Downloads:
     def run(self, model, _official=False):
         key=model["key"];part=None;stage="准备目录"
         try:
+            self.check_stopped(key)
             root=Path(self.directory(model["category"])).resolve();root.mkdir(parents=True,exist_ok=True)
             target=(root/model["name"]).resolve()
             if not target.is_relative_to(root): raise ValueError("模型路径越界")
@@ -205,6 +225,7 @@ class Downloads:
             repo, filepath = model["url"].split("https://huggingface.co/",1)[1].split("/resolve/main/",1)
             stage="获取模型信息"
             for metadata_attempt in range(2):
+                self.check_stopped(key)
                 try:
                     with self.open_source(urllib.request.Request("https://huggingface.co/api/models/"+repo+"?blobs=true",headers=headers),key,timeout=60) as meta:
                         metadata=json.load(meta)
@@ -216,6 +237,7 @@ class Downloads:
                     if mode!='auto' or self.jobs[key].get('download_source')!='xiangongyun' or metadata_attempt:raise
                     self.update(key,download_source='official',error='仙宫云模型信息不可用，切换官方源')
             metadata_source=self.jobs[key].get('download_source')
+            self.check_stopped(key)
             self.update(key,reset_mirror_prefix=False)
             marker=part.with_name(part.name+".json")
             identity={"sha256":expected,"size":size}
@@ -230,6 +252,7 @@ class Downloads:
             self.update(key,total=size,bytes=offset)
             stage="下载模型文件"
             for attempt in range(1,5):
+                self.check_stopped(key)
                 offset=part.stat().st_size if part.exists() else 0
                 if offset and self.jobs[key].get('reset_mirror_prefix'):
                     part.unlink(missing_ok=True);offset=0
@@ -260,7 +283,9 @@ class Downloads:
                             # read1 returns available network data instead of waiting to fill a large read buffer.
                             read=getattr(response,"read1",response.read)
                             while True:
+                                self.check_stopped(key)
                                 chunk=read(64*1024)
+                                self.check_stopped(key)
                                 if not chunk: break
                                 if offset+len(chunk)>size: raise ValueError("下载源返回的数据超过模型大小")
                                 out.write(chunk);offset+=len(chunk)
@@ -269,6 +294,7 @@ class Downloads:
                     if offset!=size: raise ConnectionError(f"传输提前结束：已收到{offset}字节，应为{size}字节")
                     break
                 except (OSError,urllib.error.URLError,http.client.HTTPException) as error:
+                    self.check_stopped(key)
                     if isinstance(error,urllib.error.HTTPError) and error.code not in {408,429,500,502,503,504}: raise
                     if isinstance(error,OSError) and error.errno in {errno.ENOSPC,errno.EACCES,errno.EROFS,errno.EPERM}: raise
                     if mode=='auto' and self.source_failure(error):
@@ -278,11 +304,15 @@ class Downloads:
                     self.update(key,state="retrying",attempt=attempt,error=download_error(error,stage))
                     self.sleeper(min(2**attempt,8))
             stage="校验文件"
+            self.check_stopped(key)
             self.update(key,state="verifying")
             digest=hashlib.sha256()
             with part.open("rb") as downloaded:
-                while chunk:=downloaded.read(4*1024*1024): digest.update(chunk)
+                while chunk:=downloaded.read(4*1024*1024):
+                    self.check_stopped(key)
+                    digest.update(chunk)
             if part.stat().st_size!=size: raise ValueError("下载文件不完整，已保留断点")
+            self.check_stopped(key)
             actual=digest.hexdigest()
             self.update(key,expected_sha256=expected,actual_sha256=actual,revision=metadata['sha'],metadata_source=metadata_source)
             if actual!=expected:
@@ -296,10 +326,16 @@ class Downloads:
                 raise ValueError("完整文件SHA256校验失败，文件已保留待检查，未安装；重试会重新下载。预期="+expected+"；实际="+actual)
             # Never overwrite files created by another downloader while this job was running.
             stage="安装模型文件"
-            os.link(part,target);part.unlink();marker.unlink(missing_ok=True);part=None
+            with self.lock:
+                if self.jobs[key].get('stop_requested'):raise DownloadStopped()
+                os.link(part,target);part.unlink();marker.unlink(missing_ok=True);part=None
+                self.jobs[key].update(state='done')
             self.invalidate()
             self.update(key,state="done")
+        except DownloadStopped:
+            self.update(key,state='stopped',error='已停止，断点已保留；点击继续下载可续传')
         except Exception as error:
-            self.update(key,state="error",error=download_error(error,stage))
+            with self.lock:stopped=self.jobs[key].get('stop_requested',False)
+            self.update(key,state='stopped' if stopped else 'error',error='已停止，断点已保留；点击继续下载可续传' if stopped else download_error(error,stage))
         finally:
             pass  # Verified-identity partial files survive failures and server restarts.

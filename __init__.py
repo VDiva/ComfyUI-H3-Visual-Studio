@@ -121,6 +121,14 @@ if PromptServer is not None:
         except (ValueError, TypeError) as error:
             return web.json_response({"error":str(error)},status=400)
 
+    @PromptServer.instance.routes.post('/h3_visual_studio/models/download/stop')
+    async def stop_model_download(request):
+        try:
+            payload=await request.json()
+            if not isinstance(payload,dict):raise ValueError('请求格式错误')
+            return web.json_response({'jobs':downloads.stop(payload.get('keys'))})
+        except (ValueError,TypeError) as error:return web.json_response({'error':str(error)},status=400)
+
 if PromptServer is not None:
     from pathlib import Path
     proxy_config_path=Path(__file__).parent / "download-proxy.json"
@@ -251,7 +259,7 @@ if PromptServer is not None:
         if any(j.get('state') in {'queued','running','merging','paused'} for j in list(batches.jobs.values())):return "请先完成或停止后台批次，再更新插件"
         if merge_lock.locked():return "FFmpeg正在合并，请完成后再更新插件"
         if video_processing_jobs and any(j.get('state') in {'queued','running'} for j in list(video_processing_jobs.jobs.values())):return "视频处理尚未完成，请稍后更新"
-        if any(j.get('state') not in {'done','error'} for j in list(downloads.jobs.values())):return "模型正在下载，请完成后再更新插件"
+        if any(j.get('state') not in {'done','error','stopped'} for j in list(downloads.jobs.values())):return "模型正在下载，请完成后再更新插件"
         if any(j.get('state') in {'queued','installing'} for j in list(dependency_manager.jobs.values())):return "依赖正在安装，请完成后再更新插件"
         return None
     plugin_updater=PluginUpdater(Path(__file__).resolve().parent,opener=lambda *a,**kw:downloads.opener(*a,**kw),busy=plugin_busy_reason,prepare=lambda:downloads.auto_detect_proxy())

@@ -5,12 +5,15 @@ export function modelDownloader({api,container,log,recheck}){
  let proxyEditor=null,sourceEditor=null,sourceSelect=null,sourceSaving=false;
  const sourceLabels={auto:'自动（仙宫云优先）',xiangongyun:'仅仙宫云',official:'仅官方（Hugging Face）'};
  const fetchStatus=async()=>{const response=await api.fetchApi('/h3_visual_studio/models');if(!response.ok)throw Error('下载服务不可用，请更新云端插件并重启');return response.json();};
+ const active=job=>job&&['queued','connecting','downloading','verifying','retrying','stopping'].includes(job.state);
+ async function stop(keys){try{const response=await api.fetchApi('/h3_visual_studio/models/download/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(keys?{keys}:{})});const data=await response.json();if(!response.ok)throw Error(data.error||'停止下载失败');log('已请求停止下载并取消排队任务。等待当前网络读写返回后停止，保留断点。');await refresh();}catch(error){log(error.message);}}
  async function start(keys){try{const response=await api.fetchApi('/h3_visual_studio/models/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keys})});const data=await response.json();if(!response.ok)throw Error(data.error||'下载启动失败');log('云端已开始顺序下载，完成后会重新检查模型。');await refresh();}catch(error){log(error.message);}}
  function paint(data){
   container.replaceChildren();
   const backend=document.createElement('div');backend.textContent='下载组件0.5.11 · '+(sourceLabels[data.source_mode]||sourceLabels.auto)+' · 后台版本：'+(data.backend_version||'旧版（未返回版本号）')+' · 已收录'+data.catalog.length+'个模型';container.append(backend);
   const toolbar=document.createElement('div');toolbar.style.cssText='display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0';
   const refreshButton=document.createElement('button');refreshButton.textContent='刷新下载进度';refreshButton.onclick=()=>refresh();toolbar.append(refreshButton);
+  const stopAll=document.createElement('button');stopAll.textContent='停止全部下载';stopAll.disabled=!Object.values(data.jobs).some(j=>active(j)&&j.state!=='stopping');stopAll.onclick=()=>stop();toolbar.append(stopAll);
   if(!sourceEditor){
    sourceEditor=document.createElement('label');sourceEditor.textContent='下载源 ';sourceSelect=document.createElement('select');sourceSelect.id='download-source';sourceSelect.setAttribute('aria-label','模型下载源');
    for(const [value,text] of Object.entries(sourceLabels)){const option=document.createElement('option');option.value=value;option.textContent=text;sourceSelect.append(option);}
@@ -28,11 +31,12 @@ export function modelDownloader({api,container,log,recheck}){
   if(keys.length){const all=document.createElement('button');all.textContent='下载全部缺失模型（云端）';all.onclick=()=>start(keys);container.append(all);}
   for(const key of new Set([...missing,...Object.keys(data.jobs)])){
    const model=catalog.get(key),job=data.jobs[key];const row=document.createElement('div');row.style.margin='8px 0';
-   const text=document.createElement('span');const state={retrying:'网络中断，自动重试',queued:'排队中',connecting:'连接下载源',downloading:'下载中',verifying:'校验中',done:'已安装',error:'失败'};
+   const text=document.createElement('span');const state={retrying:'网络中断，自动重试',queued:'排队中',connecting:'连接下载源',downloading:'下载中',verifying:'校验中',done:'已安装',error:'失败',stopping:'正在停止',stopped:'已停止'};
    text.textContent=key+(job?' · '+state[job.state]+' '+(job.total?((job.bytes||0)/job.total*100).toFixed(1)+'%':(job.bytes||0)+'字节')+(job.state==='downloading'?' · '+(typeof job.speed_bps==='number'?formatSpeed(job.speed_bps):'速度数据未返回，请更新云端后台并重启')+(job.idle_seconds>=5?' · 已'+Math.floor(job.idle_seconds)+'秒未收到数据，等待下载源响应':'')+' · 剩余'+formatEta(job.eta_seconds):'')+(job.error?' · '+job.error:''):'');if(job?.download_source)text.textContent+=' · 线路：'+(job.download_source==='xiangongyun'?'仙宫云内网（直连）':'Hugging Face 官方');row.append(text);
    if(job){const bar=document.createElement('progress');bar.style.cssText='display:block;width:100%;height:12px;margin-top:5px';bar.max=job.total||1;if(job.total)bar.value=Math.min(job.total,job.bytes||0);if(job.state==='done')bar.value=bar.max;row.append(bar);}
    if(model){const link=document.createElement('a');link.href=model.source;link.target='_blank';link.rel='noopener';link.textContent=' 来源 ';row.append(link);
-    if(!job||job.state==='error'){const button=document.createElement('button');button.textContent=job?'重试':'下载';button.onclick=()=>start([key]);row.append(button);}
+    if(!job||['error','stopped'].includes(job.state)){const button=document.createElement('button');button.textContent=job?.state==='stopped'?'继续下载':job?'重试':'下载';button.onclick=()=>start([key]);row.append(button);}
+    if(active(job)){const button=document.createElement('button');button.textContent=job.state==='stopping'?'正在停止…':'停止下载';button.disabled=job.state==='stopping';button.onclick=()=>stop([key]);row.append(button);}
    }else row.append(document.createTextNode(' · 当前后台未返回此模型下载地址；请确认更新同名插件的model_download.py、__init__.py及model-catalog.json并重启ComfyUI后端。'));
    container.append(row);
   }
@@ -42,7 +46,7 @@ export function modelDownloader({api,container,log,recheck}){
   clearTimeout(timer);try{const data=await fetchStatus();paint(data);
    const done=Object.entries(data.jobs).some(([k,v])=>v.state==='done'&&lastJobs[k]?.state!=='done');lastJobs=data.jobs;
    if(done&&!rechecking){rechecking=true;try{await recheck();}finally{rechecking=false;}}
-   if(Object.values(data.jobs).some(j=>['queued','connecting','downloading','verifying','retrying'].includes(j.state))&&container.isConnected)timer=setTimeout(refresh,1000);
+   if(Object.values(data.jobs).some(active)&&container.isConnected)timer=setTimeout(refresh,1000);
   }catch(error){container.textContent='下载进度查询失败：'+error.message+'。3秒后自动重试；不会重新提交下载任务。';if(!disposed&&container.isConnected)timer=setTimeout(refresh,3000);}
  }
  return {resume:refresh,async install(report){missing=report.missing;const data=await fetchStatus();const known=new Set(data.catalog.map(m=>m.key));const keys=missing.filter(k=>known.has(k));if(keys.length)await start(keys);else if(!missing.length)log('所需模型已齐全，无需下载。');else log('这些模型尚未匹配到下载地址：'+missing.join('、'));const unavailable=missing.filter(k=>!known.has(k));if(unavailable.length)log('已提交可下载模型；以下模型未匹配到来源：'+unavailable.join('、'));},async show(report){missing=report.missing;await refresh();},dispose(){disposed=true;clearTimeout(timer);}};
