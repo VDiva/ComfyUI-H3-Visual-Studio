@@ -1,4 +1,4 @@
-import {finishingSettings,finishingCanvas} from './finishing.mjs?v=0.15.8';
+import {finishingSettings,finishingCanvas} from './finishing.mjs?v=0.15.9';
 
 // Compile Studio projects to the bundled Director executor, keeping the selected
 // model/LoRA graph as the source of truth. No upstream timeline UI is required.
@@ -36,7 +36,7 @@ export function directorCoreRequest(prompt, project, plan, saveId) {
    if(!finish.refineModel||!finish.refineLora)throw Error('独立二采缺少模型或LoRA配置');
    model=add('UNETLoader',{unet_name:finish.refineModel,weight_dtype:'default'});
    model=add('LoraLoaderModelOnly',{model,lora_name:finish.refineLora,strength_model:1});
-   if(settings.sageAttention)model=add('PathchSageAttentionKJ',{model,sage_attention:'auto',allow_compile:false});
+   if(settings.refineSageAttention)model=add('PathchSageAttentionKJ',{model,sage_attention:'auto',allow_compile:false});
   }
   const packed={mode:finish.upscale==='latent'?(finish.refine?'upscale':'latent_upscale'):'refine',
    upscale_method:'h3_latent',latent_upscale_model:finish.latentModel,sampler:'euler',passes:finish.passes,

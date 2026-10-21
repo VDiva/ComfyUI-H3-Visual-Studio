@@ -1,7 +1,7 @@
 export function backgroundBatch({api,getPage,persist,onUpdate,log}){
  let disposed=false,timer=null,checking=false;
  const active=s=>['queued','running','merging'].includes(s);
- async function request(path,options){const r=await api.fetchApi('/h3_visual_studio/batches'+path,options);let data;try{data=await r.json();}catch{throw Error('后台批次接口不可用，请完整更新插件并重启ComfyUI');}if(!r.ok)throw Error(data.error||'后台批次请求失败');return data;}
+ async function request(path,options){let r;try{r=await api.fetchApi('/h3_visual_studio/batches'+path,options);}catch{throw Error('无法连接ComfyUI服务，显示的进度可能已过期；请检查云端日志和服务状态，勿重复提交');}if([502,503,504].includes(r.status))throw Error('ComfyUI服务失联或网关超时（HTTP '+r.status+'），显示的进度可能已过期；请检查云端日志和服务状态，勿重复提交');let data;try{data=await r.json();}catch{throw Error(r.status===404?'后台批次接口不存在，请完整更新插件并重启ComfyUI':'后台批次返回异常（HTTP '+r.status+'），请检查ComfyUI日志；显示的进度可能已过期');}if(!r.ok)throw Error(data.error||'后台批次请求失败（HTTP '+r.status+'）');return data;}
  function apply(page,job){page.batch={id:job.id,state:job.state,error:job.error,updated:job.updated};for(const item of job.items){const group=[...page.groups,...(page.comparison?.groups||[])].find(g=>g.id===item.groupId);if(group&&item.state!=='pending')group.job={...group.job,state:item.state,promptId:item.promptId,videos:item.videos||[],originalVideos:item.originalVideos||[]};}if(job.mergedVideo)page.mergedVideo=job.mergedVideo;persist();onUpdate(page,job);}
  function schedule(){clearTimeout(timer);if(!disposed)timer=setTimeout(()=>void query(),1800);}
  async function query({discover=false}={}){if(disposed||checking)return;checking=true;const page=getPage();try{
