@@ -1,25 +1,25 @@
-import {backgroundBatch} from './background-batch.mjs?v=0.12.0';
-import {generationSummary} from './generation-summary.mjs?v=0.12.0';
-import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.12.0';
-import {openVideoCompare} from './video-compare.mjs?v=0.12.0';
-import {mountDependencies} from './dependencies.mjs?v=0.12.0';
-import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.12.0';
-import {mountSelfLift,selfLiftApi} from './selflift.mjs?v=0.12.0';
-import {mountFinishing,finishApi,syncFinishingResolution} from './finishing.mjs?v=0.12.0';
-import {executionProgress} from './execution-progress.mjs?v=0.12.0';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.12.0';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.12.0';
-import {openFolderTemplate} from './folder-template.mjs?v=0.12.0';
-import {livePreview} from './live-preview.mjs?v=0.12.0';
-import {modelDownloader} from './model-download.mjs?v=0.12.0';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.12.0';
-import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.12.0';
+import {backgroundBatch} from './background-batch.mjs?v=0.12.1';
+import {generationSummary} from './generation-summary.mjs?v=0.12.1';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.12.1';
+import {openVideoCompare} from './video-compare.mjs?v=0.12.1';
+import {mountDependencies} from './dependencies.mjs?v=0.12.1';
+import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.12.1';
+import {mountSelfLift,selfLiftApi} from './selflift.mjs?v=0.12.1';
+import {mountFinishing,finishApi,syncFinishingResolution} from './finishing.mjs?v=0.12.1';
+import {executionProgress} from './execution-progress.mjs?v=0.12.1';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.12.1';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.12.1';
+import {openFolderTemplate} from './folder-template.mjs?v=0.12.1';
+import {livePreview} from './live-preview.mjs?v=0.12.1';
+import {modelDownloader} from './model-download.mjs?v=0.12.1';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.12.1';
+import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.12.1';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.12.0';
-import './folder-core.js?v=0.12.0';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.12.0';
-import {buildOfficialImport,verifyOfficialImport} from './official-import.mjs?v=0.12.0';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.12.1';
+import './folder-core.js?v=0.12.1';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.12.1';
+import {buildOfficialImport,verifyOfficialImport} from './official-import.mjs?v=0.12.1';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -45,7 +45,7 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.12.0</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.12.1</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组官方工作流</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
@@ -102,7 +102,13 @@ function attach(node){
   batchInfo.textContent=`后台批次：${({queued:'排队',running:'执行中',merging:'合并中',done:'已完成',stopped:'已停止后续提交',paused:'暂停',error:'失败'})[job.state]||job.state} · ${counts}/${job.items.length}`+(job.error?' · '+job.error:'');
   batchResume.hidden=job.state!=='paused';
   const running=job.items.find(i=>['running','queued'].includes(i.state)&&i.promptId);
-  if(running&&running.promptId!==lastBatchPrompt){lastBatchPrompt=running.promptId;preview.watch(running.promptId,running.label+' · 云端执行中');void api.fetchApi('/queue').then(r=>r.json()).then(q=>{const row=[...(q.queue_running||[]),...(q.queue_pending||[])].find(r=>r[1]===running.promptId);if(row&&project===page)progressTracker.watch(running.promptId,row[2],running.label);}).catch(()=>{});}
+  if(running){
+   if(running.promptId!==lastBatchPrompt){lastBatchPrompt=running.promptId;preview.watch(running.promptId,running.label+(running.state==='running'?' · 云端执行中':' · 等待云端执行'));}
+   void api.fetchApi('/queue').then(r=>{if(!r.ok)throw Error('无法核对队列');return r.json();}).then(q=>{
+    const current=(q.queue_running||[]).find(r=>String(r[1])===String(running.promptId)),pending=(q.queue_pending||[]).find(r=>String(r[1])===String(running.promptId)),row=current||pending;
+    if(!disposed&&row&&project===page&&page.batch?.id===job.id)progressTracker.syncQueue(running.promptId,row[2],running.label,!current);
+   }).catch(()=>{if(!disposed&&project===page&&lastBatchPrompt===running.promptId)progressTracker.syncQueue(running.promptId,null,running.label,running.state!=='running');});
+  }
   render();setBusy(busy);
  }});
  batchResume.onclick=()=>{void batchController.action('resume').catch(e=>log(e.message));};

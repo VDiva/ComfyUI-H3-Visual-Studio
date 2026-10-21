@@ -9,6 +9,6 @@ export function backgroundBatch({api,getPage,persist,onUpdate,log}){
   if(job){apply(page,job);if(active(job.state))schedule();}else if(page.batch){apply(page,{id:page.batch.id,state:'missing',items:[],error:'服务器未找到此批次，可检查队列后重新选择分段'});}
  }catch(e){log(e.message+'；稍后可查询后台批次');if(active(page.batch?.state))schedule();}finally{checking=false;}}
  return {async start(items,{autoMerge=false}={}){const page=getPage();const id=crypto.randomUUID().replaceAll('-','');page.batch={id,state:'submitting'};persist();let job;
-   try{job=await request('',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,pageId:page.pageId,items,autoMerge})});}catch(error){page.batch={id,state:'unknown',error:'提交结果不确定，请查询后台批次，勿重复提交'};persist();throw error;}
+   try{job=await request('',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,pageId:page.pageId,items,autoMerge,clientId:api.clientId||undefined})});}catch(error){page.batch={id,state:'unknown',error:'提交结果不确定，请查询后台批次，勿重复提交'};persist();throw error;}
    apply(page,job);schedule();return job;},query,async action(action){const page=getPage();if(!page.batch?.id)return;const job=await request('/'+page.batch.id+'/'+action,{method:'POST'});apply(page,job);if(active(job.state))schedule();},dispose(){disposed=true;clearTimeout(timer);},get active(){return ['submitting','unknown','paused',...['queued','running','merging']].includes(getPage().batch?.state);}};
 }

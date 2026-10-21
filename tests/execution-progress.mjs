@@ -22,3 +22,5 @@ send('progress',{prompt_id:'fast',node:'6',value:1,max:4});assert.match(text,/�
 send('executing',{node:'5'});assert.match(text,/解码图像帧/);
 late.dispose();
 console.log('PASS stage names, early execution replay, progress recovery, legacy events, isolation and cleanup');
+
+const polled=executionProgress({api,show:value=>text=value});polled.syncQueue('poll',{'1':{class_type:'UNETLoader'}},'分段1',true);assert.match(text,/排队/);polled.syncQueue('poll',{'1':{class_type:'UNETLoader'}},'分段1',false);assert.match(text,/服务器已开始执行/);assert.doesNotMatch(text,/排队/);send('executing',{prompt_id:'poll',node:'1'});assert.match(text,/加载视频模型/);polled.syncQueue('poll',{'1':{class_type:'UNETLoader'}},'分段1',false);assert.match(text,/加载视频模型/);polled.dispose();console.log('PASS queue polling corrects queued-to-running status without overwriting live node progress');

@@ -64,6 +64,8 @@ class BatchJobs:
         page_id=payload.get("pageId")
         if not isinstance(page_id,str) or not page_id or len(page_id)>200: raise ValueError("缺少页面ID")
         if any(j["state"] in ("running","queued","merging","paused") and j.get("pageId")==page_id for j in self.jobs.values()): raise ValueError("此页面已有未结束批次，请先查询、继续或停止")
+        client_id=payload.get("clientId")
+        if client_id is not None and (not isinstance(client_id,str) or len(client_id)>200): raise ValueError("浏览器连接标识无效")
         clean=[]; ids=set()
         for item in items:
             if not isinstance(item,dict) or not isinstance(item.get("prompt"),dict) or not item["prompt"] or len(item["prompt"])>2000: raise ValueError("执行图无效")
@@ -71,7 +73,7 @@ class BatchJobs:
             if not isinstance(group,str) or not group or group in ids: raise ValueError("分段ID缺失或重复")
             ids.add(group)
             clean.append({"groupId":group,"label":str(item.get("label",group))[:200],"prompt":copy.deepcopy(item["prompt"]),"workflow":copy.deepcopy(item.get("workflow",{})),"state":"pending"})
-        job={"id":key,"pageId":page_id,"created":time.time(),"state":"queued","stop":False,"autoMerge":bool(payload.get("autoMerge")),"items":clean}
+        job={"id":key,"pageId":page_id,"created":time.time(),"state":"queued","stop":False,"autoMerge":bool(payload.get("autoMerge")),"clientId":client_id,"items":clean}
         self.jobs[key]=job;self.save(job);self.launch(job)
         return self.status(key)
 
@@ -102,7 +104,7 @@ class BatchJobs:
                 if not item.get("promptId"):
                     item["state"]="submitting";self.save(job)
                     try:
-                        data=await self.call("POST","/prompt",{"prompt":item["prompt"],"extra_data":{"extra_pnginfo":{"workflow":item["workflow"]}}})
+                        data=await self.call("POST","/prompt",{"prompt":item["prompt"],"client_id":job.get("clientId"),"extra_data":{"extra_pnginfo":{"workflow":item["workflow"]}}})
                     except Exception:
                         job["state"]="paused";job["error"]="提交结果不确定，已暂停；请检查ComfyUI队列，禁止自动重试";self.save(job);return
                     if not data.get("prompt_id"):
