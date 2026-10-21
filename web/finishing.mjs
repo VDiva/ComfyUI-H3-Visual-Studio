@@ -1,3 +1,4 @@
+import {attentionModel} from './director-recipe.mjs?v=0.9.0';
 import {MEGAPIXELS} from './resolution.mjs?v=0.7.1';
 import {modelReport,assertModels,modelChoices} from './model-check.mjs?v=0.7.1';
 export const LATENT_MODEL='minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors';
@@ -5,6 +6,7 @@ export const defaultFinishing=()=>({defaultsVersion:1,refine:true,steps:4,denois
 export function finishingSettings(raw={}){
  const s={...defaultFinishing(),...raw};
  if(typeof s.refine!=='boolean'||!['off','lanczos','model','latent'].includes(s.upscale))throw Error('精修模式无效');
+ if(s.scheduler&&!['inherit','simple','beta'].includes(s.scheduler))throw Error('二采调度请选择inherit/simple/beta');
  if(s.upscale==='latent'&&(!s.latentModel||typeof s.latentModel!=='string'))throw Error('请下载并选择H3 3D latent放大模型');
  if(!Number.isInteger(s.steps)||s.steps<1||s.steps>30||!Number.isInteger(s.passes)||s.passes<1||s.passes>3||!Number.isFinite(s.denoise)||s.denoise<0.01||s.denoise>0.5)throw Error('精修步数1—30、次数1—3、强度0.01—0.5');
  if(!MEGAPIXELS.includes(s.megapixels))throw Error('精修目标须为0.1—2.0 MP，每0.1一档');
@@ -33,9 +35,17 @@ export function finishApi(prompt,raw,width,height){
   const lifted=add('H3DirectorLatentUpscale',{samples:latent,positive:structuredClone(guider.inputs.conditioning),model_name:s.latentModel,width:target.width,height:target.height,source_width:width,source_height:height,enable_chunking:!!s.chunking});
   latent=lifted;
   if(s.refine){
-   const guide=add('BasicGuider',{...structuredClone(guider.inputs),conditioning:[lifted[0],1]});
+   let refineModel=structuredClone(guider.inputs.model);
+   if(s.dualModel){
+    if(!s.refineModel||!s.refineLora)throw Error('独立二采缺少模型或LoRA配置');
+    const base=add('UNETLoader',{unet_name:s.refineModel,weight_dtype:'default'});
+    let patched=add('LoraLoaderModelOnly',{model:base,lora_name:s.refineLora,strength_model:1});
+    patched=attentionModel(add,patched,!!s.sageAttention);
+    refineModel=add('MiniMaxH3SigmaShift',{model:patched,shift_video:12,shift_audio:3});
+   }
+   const guide=add('BasicGuider',{model:refineModel,conditioning:[lifted[0],1]});
    for(let i=0;i<s.passes;i++){
-    const sigmas=add('BasicScheduler',{model:structuredClone(scheduler.inputs.model),scheduler:scheduler.inputs.scheduler,steps:s.steps,denoise:s.denoise});
+    const sigmas=add('BasicScheduler',{model:refineModel,scheduler:s.scheduler&&s.scheduler!=='inherit'?s.scheduler:scheduler.inputs.scheduler,steps:s.steps,denoise:s.denoise});
     const sampler=add('KSamplerSelect',{sampler_name:'euler'});
     latent=add('SamplerCustomAdvanced',{...structuredClone(sample.inputs),guider:guide,sampler,latent_image:latent,sigmas});
    }
@@ -77,7 +87,7 @@ export function existingUpscale(clip,model,megapixels){
 }
 function statusText(job){if(!job)return '尚无处理任务';const states={queued:'排队中',running:'处理中',done:'已完成',error:'处理失败',cancelled:'已取消'};return [states[job.state]||job.state,job.kind==='comfy'?'AI模型超分':job.method,Number.isFinite(job.progress)?'进度 '+Math.round(job.progress*100)+'%':'',job.input_size?'原尺寸 '+job.input_size.join(' × '):'',job.output_size?'输出 '+job.output_size.join(' × '):'',job.video?'文件 '+job.video.subfolder+'/'+job.video.filename:'',job.error||''].filter(Boolean).join('\n');}
 
-export function mountFinishing({container,api,getProject,getGroup,persist,preview,view,log,isBusy,setBusy,openModelDownloads,onQueued=()=>{},onFinished=()=>{}}){
+export function mountFinishing({container,api,getProject,getGroup,persist,preview,view,log,isBusy,setBusy,openModelDownloads,onQueued=()=>{},onFinished=()=>{},onSettingsChanged=()=>{}}){
  const doc=container.ownerDocument;container.innerHTML=`<div class="library"><div class="title">生成时精修与放大</div><p class="muted">Director方式：H3 3D latent放大，再在目标尺寸二采；关闭二采则只做latent放大。保留一采原片和原声音轨；新设置只作用于后续生成。二采可能改变脸部、动作或口型，超分需对比闪烁。</p><div class="row"><label><input id="finish-refine" type="checkbox">开启H3二次采样</label><label>步数 <input id="finish-steps" type="number" min="1" max="30"></label><label>强度 <input id="finish-denoise" type="number" min="0.01" max="0.5" step="0.01"></label><label>次数 <input id="finish-passes" type="number" min="1" max="3"></label></div><div class="row"><label>放大方式 <select id="finish-upscale"><option value="off">关闭</option><option value="lanczos">Lanczos插值（非AI）</option><option value="model">RealESRGAN逐帧超分</option><option value="latent">Director · H3 3D latent放大</option></select></label><label>目标MP（原画幅比例） <select id="finish-mp"></select></label><label>超分模型 <select id="finish-model"><option value="">请刷新模型列表</option></select></label><button id="finish-model-refresh">刷新已安装超分模型</button><button id="finish-model-download">下载超分模型</button><a id="finish-model-link" href="https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x4.pth" target="_blank" rel="noopener noreferrer">模型文件直链</a></div><div class="row"><label>H3 latent模型 <select id="finish-latent-model"></select></label><label><input id="finish-chunking" type="checkbox">latent时间分块（省显存）</label><button id="finish-director">使用Director方式（放大后二采）</button></div><p id="finish-size" class="muted"></p></div><div class="library"><div class="title">已生成视频处理</div><p class="muted">对已有成片做轻降噪、Lanczos放大和轻锐化，另存新文件。“普通处理”为非AI；“RealESRGAN超分”使用上方图像超分模型和下方目标MP。H3 latent方式用于新生成，已有成片不含原始latent。两者均保留原声音和帧率，不补帧。</p><div class="row"><label>源视频 <select id="post-source"></select></label><label>目标MP <select id="post-mp"></select></label><label>降噪 <select id="post-denoise"><option value="off">关闭</option><option value="light" selected>轻度</option><option value="medium">中度</option></select></label><label>锐化 <select id="post-sharpen"><option value="off">关闭</option><option value="light" selected>轻度</option></select></label></div><div class="row"><button id="post-start">普通处理</button><button id="post-ai">RealESRGAN超分已有视频</button><button id="post-query">查询后台处理</button><button id="post-cancel">取消当前处理</button><button id="post-original">预览所选原片</button><button id="post-result">预览处理结果</button></div><pre id="post-status" class="status">尚无处理任务</pre></div>`;
  const $=id=>container.querySelector('#'+id);let sources=[],timer=null,disposed=false;
  for(const id of ['finish-mp','post-mp'])for(const n of MEGAPIXELS){const o=doc.createElement('option');o.value=n;o.textContent=n.toFixed(1);$(id).append(o);}$('post-mp').value='1';
@@ -85,7 +95,7 @@ export function mountFinishing({container,api,getProject,getGroup,persist,previe
  for(const [key,id] of Object.entries(bindings))$(id).onchange=()=>{const p=getProject();p.finishing={...defaultFinishing(),...p.finishing,[key]:['refine','chunking'].includes(key)?$(id).checked:['steps','denoise','passes','megapixels'].includes(key)?Number($(id).value):$(id).value};persist();sync();};
  async function models(){try{for(const [type,field,id] of [['UpscaleModelLoader','model_name','finish-model'],['H3DirectorLatentUpscale','model_name','finish-latent-model']]){const r=await api.fetchApi('/object_info/'+type);if(!r.ok)throw Error('无法读取'+type+'模型列表，请更新完整插件并重启');const data=await r.json(),choices=modelChoices(data[type],field);if(!Array.isArray(choices))throw Error('缺少'+type+'接口，请更新插件和ComfyUI');$(id).replaceChildren();const blank=doc.createElement('option');blank.value='';blank.textContent=choices.length?'请选择模型':'未安装，请点击下载超分模型';$(id).append(blank);for(const v of choices.filter(v=>!v.startsWith('('))){const o=doc.createElement('option');o.value=v;o.textContent=v;$(id).append(o);}}const s={...defaultFinishing(),...getProject().finishing};for(const [key,id] of [['model','finish-model'],['latentModel','finish-latent-model']])if(Array.from($(id).options).some(o=>o.value===s[key]))$(id).value=s[key];}catch(e){log(e.message);}}
  $('finish-model-refresh').onclick=models;
- $('finish-director').onclick=()=>{const p=getProject();p.finishing={...defaultFinishing(),...p.finishing,upscale:'latent',refine:true,latentModel:LATENT_MODEL,steps:4};persist();sync();log('已启用Director方式：H3 3D latent放大 → 目标尺寸4步二采。首次请下载H3 latent模型。');};
+ $('finish-director').onclick=()=>{const p=getProject();p.selflift={...p.selflift,enabled:false};p.finishing={...defaultFinishing(),...p.finishing,upscale:'latent',refine:true,latentModel:LATENT_MODEL,steps:4};persist();sync();onSettingsChanged();log('已启用Director方式：H3 3D latent放大 → 目标尺寸4步二采。首次请下载H3 latent模型。');};
  $('finish-model-download').onclick=async()=>{try{await openModelDownloads();}catch(e){log(e.message);}};
  function sync(){const p=getProject(),s={...defaultFinishing(),...p.finishing};for(const [key,id] of Object.entries(bindings)){if(['refine','chunking'].includes(key))$(id).checked=s[key];else{if(['model','latentModel'].includes(key)&&s[key]&&!Array.from($(id).options).some(o=>o.value===s[key])){const o=doc.createElement('option');o.value=s[key];o.textContent=s[key]+'（请刷新确认）';$(id).append(o);}$(id).value=s[key];}}
   const t=targetCanvas(p.settings.width,p.settings.height,s.megapixels);$('finish-size').textContent=`原始 ${p.settings.width} × ${p.settings.height}；放大目标 ${t.width} × ${t.height}。当前方式：${s.upscale==='latent'?'H3 3D latent放大'+(s.refine?' → 高清二采':'（不二采）'):'像素处理'}。下载按钮按当前方式提供模型；H3模型放入models/latent_upscale_models，RealESRGAN放入models/upscale_models。`;

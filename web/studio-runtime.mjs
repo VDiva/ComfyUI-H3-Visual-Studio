@@ -1,17 +1,20 @@
-import {mountFinishing,finishApi} from './finishing.mjs?v=0.7.1';
-import {executionProgress} from './execution-progress.mjs?v=0.7.1';
+import {mountDependencies} from './dependencies.mjs?v=0.10.0';
+import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.9.0';
+import {mountSelfLift,selfLiftApi} from './selflift.mjs?v=0.9.1';
+import {mountFinishing,finishApi} from './finishing.mjs?v=0.9.0';
+import {executionProgress} from './execution-progress.mjs?v=0.8.0';
 import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.5.10';
 import {attachResourceEditor} from './resource-editor.mjs?v=0.5.8';
 import {openFolderTemplate} from './folder-template.mjs?v=0.5.8';
 import {livePreview} from './live-preview.mjs?v=0.5.8';
 import {modelDownloader} from './model-download.mjs?v=0.5.8';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.7.1';
-import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.5.8';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.8.0';
+import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.9.0';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
 import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.5.8';
 import './folder-core.js?v=0.5.8';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.7.1';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.9.1';
 import {buildOfficialImport,verifyOfficialImport} from './official-import.mjs?v=0.5.8';
 
 const states=new WeakMap();
@@ -38,7 +41,7 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.7.1</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.10.0</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组官方工作流</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
@@ -82,7 +85,10 @@ function attach(node){
  const progressTracker=executionProgress({api,show:text=>{stepStatus.textContent='当前步骤：'+text;previewStep.textContent='当前步骤：'+text;}});
  function setBusy(value){busy=value;$('add-page').disabled=value;$('delete-page').disabled=value;$('edit').disabled=value;for(const id of ['run','run-one','resume'])$(id).disabled=value;$('stop').disabled=!value;}
  function current(){return project.groups[selected];}
- const finishingController=mountFinishing({container:panels.finishing,api,getProject:()=>project,getGroup:current,persist,preview,view,log,isBusy:()=>busy,setBusy,onQueued:(id,prompt)=>progressTracker.watch(id,prompt,'已有视频AI超分'),onFinished:id=>progressTracker.finish(id),openModelDownloads:async()=>{showPanel('models');const key=project.finishing?.upscale==='latent'?'models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors':'models/upscale_models/RealESRGAN_x4.pth';await downloader.show({missing:[key]});log('点击模型旁的下载按钮，安装完成后返回视频精修与放大，刷新并选择模型。');}});
+
+ const finishingController=mountFinishing({onSettingsChanged:()=>render(),container:panels.finishing,api,getProject:()=>project,getGroup:current,persist,preview,view,log,isBusy:()=>busy,setBusy,onQueued:(id,prompt)=>progressTracker.watch(id,prompt,'已有视频AI超分'),onFinished:id=>progressTracker.finish(id),openModelDownloads:async()=>{showPanel('models');const key=(project.selflift?.enabled||project.finishing?.upscale==='latent')?'models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors':'models/upscale_models/RealESRGAN_x4.pth';await downloader.show({missing:[key]});log('点击模型旁的下载按钮，安装完成后返回视频精修与放大，刷新并选择模型。');}});
+ const selfliftController=mountSelfLift({container:panels.finishing,getProject:()=>project,persist,onChange:()=>{syncSettings();render();},log});
+ const recipeController=mountDirectorRecipe({container:panels.finishing,getProject:()=>project,persist,onChange:()=>{syncSettings();render();},log});
  function numberGroups(){project.groups.forEach((g,i)=>g.number=i+1);selected=Math.max(0,Math.min(selected,project.groups.length-1));}
  function render(){
   $('page-list').replaceChildren();
@@ -114,7 +120,7 @@ function attach(node){
    for(const file of [...(g.job?.videos||[]),...(project.mergedVideo?[project.mergedVideo]:[])]){const video=document.createElement('video');video.className='preview';video.controls=true;video.preload='metadata';video.src=view({...file,type:file.type||'output'});$('result').append(video);}
    if(!busy&&g.job?.videos?.[0])preview.video(view({...g.job.videos[0],type:'output'}),'素材组'+g.number+' · 已完成视频');
   }else $('binding').textContent='';
-  finishingController.sync();
+  finishingController.sync();selfliftController.sync();recipeController.sync();
   persist();
  }
  function renderCharacters(){
@@ -183,7 +189,7 @@ function attach(node){
  }
  $('folder').onclick=()=>$('folder-input').click();
  async function chapterPage(chapter,mode=project.mode){
-  const next=defaultProject();next.pageId=uuid();next.name=chapter.name.split('/').at(-1);next.sourcePath=chapter.name;next.settings={...project.settings,acceleration:'dmad4'};next.mode=mode;next.imageSettings=structuredClone(project.imageSettings);next.finishing=structuredClone(project.finishing);next.audioReference=project.audioReference;const maps={images:new Map(),audios:new Map(),videos:new Map()};
+  const next=defaultProject();next.pageId=uuid();next.name=chapter.name.split('/').at(-1);next.sourcePath=chapter.name;next.settings={...project.settings,steps:8,sampler:'euler',acceleration:'inherit'};next.mode=mode;next.imageSettings=structuredClone(project.imageSettings);next.finishing={...structuredClone(project.finishing),refine:false,upscale:'off'};next.audioReference=project.audioReference;applyDirectorPreset(next,false);const maps={images:new Map(),audios:new Map(),videos:new Map()};
   for(const [key,shared,local] of [['images','sharedImages','images'],['audios','sharedAudios','audios'],['videos','sharedVideos','videos']]){
    const list=chapter[shared]||[];
    for(const [i,file] of list.entries()){log(`${next.name}：公共${key} ${i+1}/${list.length} 上传中`);const value=await upload(file);next.media[key].push({id:i+1,name:file.name,file:value});maps[key].set(file,i+1);}
@@ -221,12 +227,13 @@ function attach(node){
    await new Promise(resolve=>setTimeout(resolve,1500));
   }throw Error('面板已关闭，停止后续提交；已提交任务仍在服务器运行');
  }
+ const dependencyController=mountDependencies({api,container:panels.models,log});
  const downloader=modelDownloader({api,container:$('model-downloads'),log,recheck:async()=>{try{showPanel('models');await checkAllModels(await app.graphToPrompt());}catch(error){log(error.message);}}});
  async function checkAllModels(graph,{imageOnly=false,install=false}={}){
   const response=await api.fetchApi('/object_info');if(!response.ok)throw Error('无法获取云端模型清单，未提交任务');
-  const prompts=imageOnly?[]:[finishApi(accelerateApi(graph.output,project.settings),project.finishing,project.settings.width,project.settings.height)];
+  const prompts=imageOnly?[]:[selfLiftApi(finishApi(accelerateApi(graph.output,project.settings),{...project.finishing,sageAttention:!!project.settings.sageAttention},project.settings.width,project.settings.height),project)];
   if(imageOnly||project.mode==='auto_character')prompts.push(compileCharacterImage(project,{id:'CHECK',name:'模型检查',description:'仅检查模型，不提交生图'}).prompt);
-  const report=modelReport(await response.json(),prompts);if(install||report.missing.length||report.nodes.length||report.unknown.length)showPanel('models');log(reportText(report));await downloader.show(report);if(install){await downloader.install(report);if(report.nodes.length)log('模型下载已处理；以下是缺少的节点，需要更新ComfyUI，不是下载权重：\n'+report.nodes.join('\n'));}else assertModels(report);return report;
+  const report=modelReport(await response.json(),prompts);const dependencyErrors=await dependencyController.check(prompts[0]||{});if(install||dependencyErrors.length||report.missing.length||report.nodes.length||report.unknown.length)showPanel('models');log(reportText(report));await downloader.show(report);if(install){await downloader.install(report);if(report.nodes.length)log('模型下载已处理；以下是缺少的节点，需要更新ComfyUI，不是下载权重：\n'+report.nodes.join('\n'));}else{assertModels(report);if(dependencyErrors.length)throw Error('缺少运行依赖：\n'+dependencyErrors.join('\n'));}return report;
  }
  async function installModels(){if(busy)return;setBusy(true);try{await checkAllModels(await app.graphToPrompt(),{install:true});}catch(error){log(error.message);}finally{setBusy(false);}}
  $('install-models').onclick=installModels;
@@ -294,7 +301,7 @@ function attach(node){
  }
  $('run-one').onclick=()=>run(true);$('run').onclick=()=>run(false);$('stop').onclick=()=>{stop=true;log('停止后续提交；当前任务继续运行，等待完成后结束批次。');};
  $('resume').onclick=async()=>{if(busy)return;const pending=project.groups.filter(g=>g.job?.state==='queued'&&g.job.promptId);const images=project.characters.some(c=>['queued','generated'].includes(c.imageJob?.state));if(!pending.length&&!images){log('没有待查询任务。');return;}setBusy(true);stop=false;try{if(images)await ensureCharacterImages(project.groups,await app.graphToPrompt(),{allowSubmit:false});for(const g of pending){const history=await waitJob(g.job.promptId);g.job.state=history.status?.status_str==='success'?'done':'error';g.job.videos=resultVideos(history);g.job.originalVideos=originalVideos(history);persist();render();if(g.job.videos[0])preview.video(view({...g.job.videos[0],type:'output'}),'已恢复任务的视频结果');}log('已提交任务状态已更新；没有追加生成。');}catch(error){log(error.message);}finally{setBusy(false);}};
- $('export').onclick=async()=>{try{if(project.finishing?.refine||(project.finishing?.upscale&&project.finishing.upscale!=='off')){const request=compileRequest((await app.graphToPrompt()).output,project,current());download(request.prompt,project.name+'_含精修_API.json');log('已导出包含精修、放大和一采保存的执行API（供ComfyUI API使用）；可视化工作区请用保存工程。');return;}const g=current();const video=videoWithCharacters(project,g);const plan=planGroup(video.project,video.group);const original=app.graph.serialize();const target=original.nodes.find(n=>n.type==='MiniMaxH3ReferenceToVideo');if(!target)throw Error('缺少官方H3节点');const uploaded=Object.fromEntries(['images','audios','videos'].map(key=>[key,plan[key].map(row=>row.file)]));
+ $('export').onclick=async()=>{try{if(project.settings.sageAttention||project.selflift?.enabled||project.finishing?.refine||(project.finishing?.upscale&&project.finishing.upscale!=='off')){const request=compileRequest((await app.graphToPrompt()).output,project,current());download(request.prompt,project.name+'_含精修_API.json');log('已导出包含精修、放大和一采保存的执行API（供ComfyUI API使用）；可视化工作区请用保存工程。');return;}const g=current();const video=videoWithCharacters(project,g);const plan=planGroup(video.project,video.group);const original=app.graph.serialize();const target=original.nodes.find(n=>n.type==='MiniMaxH3ReferenceToVideo');if(!target)throw Error('缺少官方H3节点');const uploaded=Object.fromEntries(['images','audios','videos'].map(key=>[key,plan[key].map(row=>row.file)]));
    const loader=(type,value)=>{const fresh=globalThis.LiteGraph.createNode(type);if(!fresh)throw Error('ComfyUI缺少官方节点 '+type);const key={LoadImage:'image',LoadAudio:'audio',LoadVideo:'file',PrimitiveStringMultiline:'value',PrimitiveInt:'value'}[type];if(key){const w=fresh.widgets?.find(w=>w.name===key);if(!w)throw Error(type+'参数接口不兼容');w.value=value;}const data=fresh.serialize();fresh.onRemoved?.();return data;};
    const result=buildOfficialImport(original,target.id,plan,uploaded,loader);verifyOfficialImport(result.graph,result);const output=result.graph;
    for(const n of output.nodes){
@@ -319,7 +326,7 @@ function attach(node){
    const response=await send(number,{output:request.prompt,workflow},options);if(!response?.prompt_id)throw Error('服务器未返回任务ID');g.job={state:'queued',promptId:response.prompt_id};preview.watch(response.prompt_id);persist();render();log(`当前组已通过ComfyUI运行按钮提交：${response.prompt_id}；结果将自动更新。`);
    const queuedPageId=project.pageId;void waitJob(response.prompt_id).then(history=>{if(disposed||g.job?.promptId!==response.prompt_id)return;g.job.state=history.status?.status_str==='success'?'done':'error';g.job.videos=resultVideos(history);g.job.originalVideos=originalVideos(history);persist();if(project.pageId===queuedPageId){render();if(g.job.videos[0])preview.video(view({...g.job.videos[0],type:'output'}),'当前组视频已完成，可播放声音');}}).catch(error=>{if(!disposed)log('结果自动查询中断：'+error.message+'；可点击查询已提交任务。');});return response;
   }finally{setBusy(false);}
- },refresh(){try{workspace=readWorkspace(widget.value);project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;syncSettings();render();}catch(error){log('工程数据错误：'+error.message);}},dispose(){if(expanded)toggleExpanded(false);disposed=true;stop=true;progressTracker.dispose();downloader.dispose();finishingController.dispose();resourceEditor.dispose();commonResourceEditor.dispose();preview.dispose();document.removeEventListener('keydown',escape);placeholder?.remove();host.remove();}};states.set(node,state);render();
+ },refresh(){try{workspace=readWorkspace(widget.value);project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;syncSettings();render();}catch(error){log('工程数据错误：'+error.message);}},dispose(){if(expanded)toggleExpanded(false);disposed=true;stop=true;progressTracker.dispose();downloader.dispose();dependencyController.dispose();finishingController.dispose();resourceEditor.dispose();commonResourceEditor.dispose();preview.dispose();document.removeEventListener('keydown',escape);placeholder?.remove();host.remove();}};states.set(node,state);render();
 }
 app.registerExtension({name:'H3.Visual.Studio.Official',setup(){
  const send=api.queuePrompt.bind(api);

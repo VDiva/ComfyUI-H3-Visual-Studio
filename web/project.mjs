@@ -1,12 +1,14 @@
+import {applyDirectorPreset} from './director-recipe.mjs?v=0.9.0';
+import {defaultSelfLift,selfLiftApi} from './selflift.mjs?v=0.9.1';
 import {defaultImageSettings,videoWithCharacters} from './characters.mjs?v=0.5.7';
-import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.5.7';
-import {defaultFinishing,finishApi,isOriginalVideo} from './finishing.mjs?v=0.7.1';
+import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.9.0';
+import {defaultFinishing,finishApi,isOriginalVideo} from './finishing.mjs?v=0.9.0';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];
-export const defaultProject = () => ({version:1,name:'未命名项目',mode:'reference',autoMerge:false,finishing:defaultFinishing(),characters:[],imageSettings:defaultImageSettings(),commonPrompt:'',audioReference:false,
-  settings:{width:864,height:480,steps:8,seed:666,sampler:'res_multistep',scheduler:'simple',acceleration:'dmad4'},
-  media:{images:[],audios:[],videos:[]},groups:[]});
+export const defaultProject = () => applyDirectorPreset({version:1,name:'未命名项目',mode:'reference',autoMerge:false,finishing:{...defaultFinishing(),refine:false,upscale:'off'},selflift:defaultSelfLift(),characters:[],imageSettings:defaultImageSettings(),commonPrompt:'',audioReference:false,
+  settings:{width:864,height:480,steps:8,seed:666,sampler:'euler',scheduler:'simple',acceleration:'inherit'},
+  media:{images:[],audios:[],videos:[]},groups:[]},false);
 export function readProject(raw) {
   const base=defaultProject();
   const value=typeof raw==='string' ? JSON.parse(raw || '{}') : structuredClone(raw || {});
@@ -15,7 +17,7 @@ export function readProject(raw) {
   // Missing presets adopt the current default; explicit saved choices remain unchanged.
   const finishing={...defaultFinishing(),...value.finishing};
   if(value.finishing?.defaultsVersion!==1)Object.assign(finishing,{defaultsVersion:1,refine:true,upscale:'latent',chunking:true,steps:4});
-  result.finishing=finishing;
+  result.finishing=finishing;result.selflift={...defaultSelfLift(),enabled:false,...value.selflift};
   if(!['reference','auto_character'].includes(result.mode)||!Array.isArray(result.characters))throw Error('工作流模式或人物列表无效');
   accelerationMode(result.settings);
   if(!Array.isArray(result.groups)||TAGS.some(([key])=>!Array.isArray(result.media[key])))throw Error('工程素材或分组格式错误');
@@ -114,7 +116,7 @@ export function compileRequest(base,project,group) {
   if(videoNodes.length!==1)throw Error('官方保存链路需要一个CreateVideo');
   const source=result[String(videoNodes[0].inputs.audio?.[0])];
   if(source?.class_type!=='VAEDecodeAudio')throw Error('最终音轨必须连接官方VAEDecodeAudio，禁止参考音频直接作为成片原声');
-  return {prompt:finishApi(result,project.finishing,project.settings.width,project.settings.height),plan};
+  return {prompt:selfLiftApi(finishApi(result,{...project.finishing,sageAttention:!!project.settings.sageAttention},project.settings.width,project.settings.height),project),plan};
 }
 export function resultVideos(history) {
   const files=[];

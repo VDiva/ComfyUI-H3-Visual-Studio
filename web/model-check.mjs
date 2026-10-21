@@ -1,4 +1,4 @@
-const loaders={H3DirectorLatentUpscale:['model_name','latent_upscale_models'],UNETLoader:['unet_name','diffusion_models'],CLIPLoader:['clip_name','text_encoders'],DualCLIPLoader:['clip_name1','text_encoders','clip_name2'],VAELoader:['vae_name','vae'],LoraLoaderModelOnly:['lora_name','loras'],LoraLoader:['lora_name','loras'],UpscaleModelLoader:['model_name','upscale_models']};
+const loaders={H3SelfLiftSampler:['model_name','latent_upscale_models'],H3DirectorLatentUpscale:['model_name','latent_upscale_models'],UNETLoader:['unet_name','diffusion_models'],CLIPLoader:['clip_name','text_encoders'],DualCLIPLoader:['clip_name1','text_encoders','clip_name2'],VAELoader:['vae_name','vae'],LoraLoaderModelOnly:['lora_name','loras'],LoraLoader:['lora_name','loras'],UpscaleModelLoader:['model_name','upscale_models']};
 export function modelChoices(definition,field){
  const value=definition?.input?.required?.[field]??definition?.input?.optional?.[field];
  if(Array.isArray(value?.[0]))return value[0];

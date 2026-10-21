@@ -1,6 +1,7 @@
+import {TURBO8,attentionModel} from './director-recipe.mjs?v=0.9.0';
 // Independent integration of the documented DMAD stock-node recipe; no AICG3D code copied.
 export const DMAD_LORA='dmad_minimax_h3_4step_full_critic_comfyui.safetensors';
-export const ACCELERATION_MODES=[['inherit','沿用原图（原Turbo/步数）'],['dmad4','DMAD 四步加速（需下载LoRA）'],['dmad8','DMAD 八步（动作质量对照）']];
+export const ACCELERATION_MODES=[['director8','导演台 Turbo8（res_multistep/simple）'],['inherit','沿用原图（原Turbo/步数）'],['dmad4','DMAD 四步加速（需下载LoRA）'],['dmad8','DMAD 八步（动作质量对照）']];
 export function accelerationMode(settings={}){
  const mode=settings.acceleration??'inherit';
  if(!ACCELERATION_MODES.some(([id])=>id===mode))throw Error('未知视频加速模式：'+mode);
@@ -8,10 +9,11 @@ export function accelerationMode(settings={}){
 }
 export function effectiveVideoSettings(settings){
  const mode=accelerationMode(settings);
- return mode==='inherit'?{...settings}:{...settings,steps:mode==='dmad4'?4:8,sampler:'lcm',scheduler:'simple'};
+ return mode==='director8'?{...settings,steps:8,sampler:'res_multistep',scheduler:'simple'}:mode==='inherit'?{...settings}:{...settings,steps:mode==='dmad4'?4:8,sampler:'lcm',scheduler:'simple'};
 }
 export function accelerationSummary(settings){
  const mode=accelerationMode(settings);
+ if(mode==='director8')return '导演台参考：Turbo8 / res_multistep / simple / 偏移12/3；保留当前主模型，原例预设可指定FL2VA。';
  return mode==='inherit'?'沿用原图的LoRA和采样设置。':`DMAD ${mode==='dmad4'?4:8}步 · lcm/simple · 偏移12/2 · 替换原Turbo LoRA，不叠加；人物生图参数不变。参考/混合模型效果需实测。`;
 }
 export function accelerateApi(base,settings){
@@ -32,6 +34,14 @@ export function accelerateApi(base,settings){
  if(JSON.stringify(scheduler.inputs.model)!==JSON.stringify(guider.inputs.model))throw Error('DMAD调度器与guider需连接同一偏移模型');
  const selector=source(sampler,'sampler','KSamplerSelect');
  const effective=effectiveVideoSettings(settings);
+ if(mode==='director8'){
+  Object.assign(lora.inputs,{lora_name:TURBO8,strength_model:1});
+  if(settings.directorBaseModel)prompt[String(lora.inputs.model[0])].inputs.unet_name=settings.directorBaseModel;
+  Object.assign(shift.inputs,{shift_video:12,shift_audio:3});
+  Object.assign(scheduler.inputs,{steps:8,scheduler:'simple',denoise:1});selector.inputs.sampler_name='res_multistep';
+  if(settings.sageAttention){let next=Math.max(...Object.keys(prompt).map(Number));const add=(class_type,inputs)=>{const id=String(++next);prompt[id]={class_type,inputs};return [id,0];};shift.inputs.model=attentionModel(add,shift.inputs.model,true);}
+  return prompt;
+ }
  Object.assign(lora.inputs,{lora_name:DMAD_LORA,strength_model:1});
  Object.assign(shift.inputs,{shift_video:12,shift_audio:2});
  Object.assign(scheduler.inputs,{steps:effective.steps,scheduler:'simple',denoise:1});
@@ -44,7 +54,7 @@ export function accelerateWorkflow(graph,settings){
  const api=Object.fromEntries(graph.nodes.map(n=>[String(n.id),{class_type:n.type,inputs:{}}]));
  for(const l of graph.links){const [id,a,o,b,slot]=l;api[String(b)].inputs[graph.nodes.find(n=>n.id===b).inputs[slot].name]=[String(a),o];}
  const result=accelerateApi(api,settings);
- const fields={LoraLoaderModelOnly:['lora_name','strength_model'],MiniMaxH3SigmaShift:['shift_video','shift_audio'],BasicScheduler:['scheduler','steps','denoise'],KSamplerSelect:['sampler_name']};
+ const fields={UNETLoader:['unet_name','weight_dtype'],LoraLoaderModelOnly:['lora_name','strength_model'],MiniMaxH3SigmaShift:['shift_video','shift_audio'],BasicScheduler:['scheduler','steps','denoise'],KSamplerSelect:['sampler_name']};
  for(const n of graph.nodes){const keys=fields[n.type];if(!keys)continue;
   keys.forEach((key,i)=>{if(result[String(n.id)].inputs[key]!==undefined){n.widgets_values[i]=result[String(n.id)].inputs[key];if(n.widgets_values_named)n.widgets_values_named[key]=n.widgets_values[i];}});
  }

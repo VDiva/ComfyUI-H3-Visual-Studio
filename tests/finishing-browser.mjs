@@ -45,6 +45,7 @@ const server=http.createServer(async(req,res)=>{
  if(url.pathname==='/h3_visual_studio/process'&&req.method==='POST'){let body='';for await(const c of req)body+=c;postPayload=JSON.parse(body);postQueries=0;res.end(JSON.stringify({id:'post-1',state:'queued'}));return;}
  if(url.pathname==='/h3_visual_studio/process/post-1/cancel'){cancelCalls++;res.end(JSON.stringify({id:'post-1',state:'cancelled'}));return;}
  if(url.pathname==='/h3_visual_studio/process/post-1'){postQueries++;res.end(JSON.stringify({id:'post-1',state:cancelCalls?'cancelled':'done',video:cancelCalls?undefined:{filename:'finished.mp4',subfolder:'H3_Processed',type:'output'}}));return;}
+ if(url.pathname==='/h3_visual_studio/dependencies'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({environment:{python:'3.12',torch:'2.8',cuda:'12.8',gpu:'mock GPU'},items:[{key:'safetensors',label:'safetensors',installed:true,can_install:false,job:{}}],restart_required:false}));return;}
  if(url.pathname==='/queue'){res.end(JSON.stringify({queue_pending:[],queue_running:[]}));return;}
  if(url.pathname==='/view'){res.setHeader('Content-Type','image/png');res.end(png);return;}
  res.statusCode=404;res.end('not found');
@@ -74,6 +75,9 @@ try{
  await page.locator('#post-original').click();assert.match(await page.locator('#live-video').getAttribute('src'),/sample.mp4/);
  await page.locator('#post-cancel').click();assert.equal(cancelCalls,1);
  await page.locator('#post-ai').click();await page.waitForFunction(()=>{const j=JSON.parse(window.node.widgets[0].value).pages[0].postJob;return j?.kind==='comfy'&&j.state==='done';});assert.equal(requests.length,1);assert.ok(Object.values(requests[0].output).some(n=>n.class_type==='H3FrameUpscale'));assert.ok(!Object.values(requests[0].output).some(n=>n.class_type==='SamplerCustomAdvanced'));
+ await page.locator('#recipe-balanced').click();let recipe=await page.evaluate(()=>JSON.parse(node.widgets[0].value).pages[0]);assert.equal(recipe.settings.acceleration,'director8');assert.equal(recipe.finishing.steps,3);assert.equal(recipe.finishing.scheduler,'beta');assert.equal(recipe.finishing.dualModel,false);assert.equal(recipe.selflift.enabled,false);
+ await page.locator('#recipe-exact').click();recipe=await page.evaluate(()=>JSON.parse(node.widgets[0].value).pages[0]);assert.equal(recipe.finishing.dualModel,true);assert.equal(recipe.finishing.megapixels,2);assert.equal(recipe.settings.directorBaseModel,'minimax_h3_fl2va_pruned_int8_convrot.safetensors');
+ await page.locator('#selflift-enabled').check();const selfState=await page.evaluate(()=>JSON.parse(node.widgets[0].value).pages[0]);assert.equal(selfState.selflift.enabled,true);assert.equal(selfState.settings.acceleration,'inherit');assert.equal(selfState.settings.sampler,'euler');assert.equal(selfState.finishing.refine,false);assert.equal(selfState.finishing.upscale,'off');await page.locator('#selflift-scale').fill('0.75');await page.locator('#selflift-scale').dispatchEvent('change');assert.equal(await page.evaluate(()=>JSON.parse(node.widgets[0].value).pages[0].selflift.lowScale),0.75);
  await page.locator('#expand').click();await page.screenshot({path:path.join(root,'tests/视频精修与放大预览.png')});assert.deepEqual(errors,[]);
  console.log('PASS full studio finishing settings persistence, model refresh, source selection, background processing/polling, compare previews and cancel');
 }finally{await browser?.close();await new Promise(r=>server.close(r));}

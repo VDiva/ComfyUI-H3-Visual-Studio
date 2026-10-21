@@ -4,7 +4,7 @@ import {defaultProject,compileRequest,resultVideos,originalVideos} from '../web/
 import {finishApi,defaultFinishing,existingUpscale} from '../web/finishing.mjs';
 import {modelReport} from '../web/model-check.mjs';
 const base=JSON.parse(fs.readFileSync(new URL('../examples/官方采样API基线.json',import.meta.url),'utf8'));
-const p=defaultProject();p.groups=[{id:'g',number:1,seconds:4,prompt:'真实人物在夜间站立，无对白。'}];
+const p=defaultProject();p.selflift.enabled=false;p.finishing=defaultFinishing();p.groups=[{id:'g',number:1,seconds:4,prompt:'真实人物在夜间站立，无对白。'}];
 assert.equal(p.finishing.upscale,'latent');assert.equal(p.finishing.refine,true);
 assert.equal(Object.values(compileRequest(base,p,p.groups[0]).prompt).filter(n=>n.class_type==='H3DirectorLatentUpscale').length,1);
 p.finishing.upscale='off';p.finishing.refine=false;

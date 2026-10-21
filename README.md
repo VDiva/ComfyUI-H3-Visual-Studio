@@ -315,3 +315,67 @@ FFmpeg二进制来自PyPI imageio-ffmpeg发行包，来源和wheel校验值见ff
 ## 提示词资源引用
 
 分组提示词及公共提示词输入@显示当前页图片/音频/视频，可继续输入类型、编号或文件名筛选；方向键选择、Enter/Tab插入、Esc关闭，也可鼠标点击。插入@图片N、@音频N、@视频N，提交时仍由官方请求编译器转换。已存在资源分类型着色，缺失编号用橙色波浪线；已有<Picture N>/<Audio N>/<Video N>也高亮。颜色仅用于编辑显示，不改变保存的提示词文字和角色编号。
+
+
+## v0.8.0 SelfLift渐进一采（实验）
+
+入口：“视频精修与放大”→“SelfLift 渐进一采”。默认关闭，设置按页面保存。启用后先在较小画布运行一采前段，将切点的干净视频latent用H3 3D模型放大，再重建切点噪声状态，沿同一SIGMAS的剩余部分完成高清采样；音频随同一采样继续，不从参考音频直接复制。采用Euler，参考Director SelfLift思路，独立节点H3SelfLiftSampler，无需安装旧导演台。
+
+最终宽高采用“生成设置”的分辨率，不是后处理的目标MP。默认低清宽高比例0.65（面积约42%，按32像素对齐）、高清收尾2步。总8步时为低清6步+高清2步；不额外增加一套完整采样。模型复用当前H3 latent模型选择框的权重，缺失时在“模型与下载”安装。低清比例是宽高比例，不是像素面积比例。
+
+启用时自动切换“沿用原图”并采用Euler，关闭DMAD预设和额外二采/放大。当前不支持与二采放大叠加，不支持带noise_mask的局部重绘/续接；重新开启冲突选项会在提交前提示。关闭SelfLift不会自动恢复此前设置，可自行选择原加速预设。图像生成、已有成片超分、FFmpeg合并不受影响。
+
+高清尾段依然需要相应显存，不能保证8GB机器更快或不OOM，也不能保证远景修脸。建议同一提示词/种子/时长，对比关闭与开启两版。已完成参数、编译、AV连线、冲突与模型检查、浏览器开关回归；本地没有torch/GPU/ComfyUI推理环境，实际噪声切换效果、速度、画质与显存仍需云端短片验证。
+
+实现参考：https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director/tree/main/director/selflift
+
+
+### SelfLift默认开启更新
+
+新建页面、模板初始页及新导入页面默认启用SelfLift，8步Euler、低清比例0.65、高清收尾2步；DMAD和额外二采放大默认关闭。已有保存页保留明确开关，缺少SelfLift字段的历史页不自动改变算法。
+
+
+## v0.9.0 导演台参考预设优化
+
+入口：“视频精修与放大”顶部“导演台参考预设”。提供两个显式按钮，不覆盖已有页面及此前选择的默认SelfLift设置；应用预设后关闭SelfLift。
+
+|预设|一采|二采|目标|
+|---|---|---|---|
+|均衡版|当前主模型＋Turbo8，864×480，8步res_multistep/simple，偏移12/3|沿用一采模型，Euler / beta，3步，denoise 0.2|0.7MP（可改）|
+|原例双模型参数|FL2VA pruned INT8＋Turbo8，其余同上|独立Ref2VA W4A8 mixed＋Turbo4 768p LoRA，Euler / beta，3步，denoise 0.2|2MP（可改）|
+
+均衡版减少双模型切换，适合先做低负载对比；不能保证8GB机器不OOM，也不保证比DMAD4快。原例双模型2MP内存和显存压力更大，8GB/32GB配置不建议直接长片跑批。当前只对齐参数与标准节点链路，不宣称复刻作者的实测画质/速度。
+
+原始视频和原声音轨继续保留。二采使用独立模型时，调度器和guider都连接相同的二采偏移模型；音轨始终来自一采VAEDecodeAudio，不从参考音频直接复制。独立二采开关和beta调度可单独调整。
+
+可选“KJ SageAttention”会在一采与独立二采的模型上添加PathchSageAttentionKJ，需要云端已安装对应KJ节点和兼容的SageAttention运行库；默认关闭。缺节点会在生成前提示，不静默回退。不包含原导演台MiniMaxH3MemoryEfficientSageAttentionPatch，避免重新依赖整个旧导演台；因此注意力实现并非与原例完全相同。
+
+已核对官方示例JSON，新增FL2VA、W4A8及Turbo4准确下载地址，参与现有一键安装和完整性校验。来源：
+- https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director/blob/main/example_workflows/minimax_h3_director_二采_加速.json
+- https://huggingface.co/Kijai/MiniMax-H3-experimental
+- https://huggingface.co/Comfy-Org/MiniMax-H3
+
+已完成两套请求图、独立模型/LoRA、调度、原音轨保留、模型检查、界面预设及SelfLift切换回归；本地无GPU推理环境，实际显存、速度、闪烁和人脸效果待云端同镜头对比。
+
+
+### v0.9.1默认方案
+
+按用户选择，新建、模板初始页及新导入页面默认采用导演台单模型均衡版：864×480 Turbo8一采，H3 latent放大到0.7MP，Euler/beta三步、强度0.2二采。关闭SelfLift、DMAD、独立二采模型及SageAttention。已保存页的明确参数保留。
+
+
+## v0.10.0 运行模块与节点依赖安装
+
+“模型与下载”页新增“运行模块与节点依赖”。生成前按实际请求检查所需模块（模型权重仍由原下载器负责）。支持重新检测、单项下载安装、安装全部所需依赖、后台任务状态、安装日志和重启提示。安装使用正在运行ComfyUI的sys.executable，不能装进另一套Python；安装时要求生成队列空闲，安装完成需手动重启ComfyUI，不会自动终止服务器。
+
+当前收录：Safetensors、Spandrel、imageio-ffmpeg、SageAttention V1、ComfyUI-KJNodes。后两者按Sage选项需要，不作为普通视频默认依赖。KJNodes从作者仓库固定提交ZIP安装到custom_nodes，不覆盖已有目录；目录已有但节点没加载时提示检查启动日志。依赖和模型下载均使用已有代理设置，提交安装前自动检测代理。
+
+SageAttention自动安装采用作者文档提供的Triton V1方案sageattention==1.0.6，并非Sage2/3编译版。检测CUDA GPU/架构/Torch/平台；缺少Triton时按维护者兼容表匹配Torch 2.4—2.10对应的3.x版本范围，Windows使用triton-windows，Linux使用triton，支持x86_64。Windows Torch 2.4/2.5及未收录组合不自动猜测。pip只接收二进制wheel，不自动编译；找不到适配Python/CUDA组合的包时显示pip错误。
+
+安装器锁定已有Torch/Torchvision/Torchaudio/Triton/Numpy版本，不为了装可选模块自动升级核心环境；不支持任意包名或任意仓库输入。已安装包的“检测到”不代表GPU内核通过实测，安装后只做子进程导入检查，具体加速效果需重启后短片验证。ComfyUI官方缺失节点需要更新ComfyUI本体，不会用pip安装同名包。生成依赖尚在安装或需重启时停止提交。
+
+来源：
+- https://github.com/kijai/ComfyUI-KJNodes
+- https://github.com/thu-ml/SageAttention#installation
+- https://github.com/woct0rdho/triton-windows#3-pytorch
+
+本地测试覆盖依赖识别、兼容选择、安装命令约束、固定源码归档、路径与覆盖保护、前端安装和日志；没有在本机实际安装GPU依赖，也没有访问或修改云端环境。

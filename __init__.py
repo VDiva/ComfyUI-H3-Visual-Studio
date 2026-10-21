@@ -129,3 +129,25 @@ if PromptServer is not None:
             return web.Response(body=data,content_type="application/zip",headers={"Content-Disposition":"attachment; filename=h3-folder-template.zip"})
         except (ValueError,TypeError,AttributeError) as error:
             return web.json_response({"error":str(error)},status=400)
+
+from .selflift import H3SelfLiftSampler
+NODE_CLASS_MAPPINGS["H3SelfLiftSampler"]=H3SelfLiftSampler
+NODE_DISPLAY_NAME_MAPPINGS["H3SelfLiftSampler"]="H3 SelfLift 渐进一采"
+
+if PromptServer is not None:
+    from .dependencies import DependencyManager
+    import nodes as comfy_nodes
+    custom_paths=folder_paths.get_folder_paths('custom_nodes')
+    dependency_manager=DependencyManager(custom_paths[0] if custom_paths else str(Path(__file__).resolve().parent.parent),lambda:comfy_nodes.NODE_CLASS_MAPPINGS,opener=lambda *a,**kw:downloads.opener(*a,**kw),proxy=lambda:downloads.proxy_info().get('effective',''))
+    @PromptServer.instance.routes.get('/h3_visual_studio/dependencies')
+    async def dependency_status(request):
+        return web.json_response(await asyncio.to_thread(dependency_manager.snapshot,request.query.get('refresh')=='1'))
+    @PromptServer.instance.routes.post('/h3_visual_studio/dependencies/install')
+    async def install_dependencies(request):
+        try:
+            if PromptServer.instance.prompt_queue.get_tasks_remaining()>0:raise ValueError('请等待ComfyUI生成队列结束后再安装运行依赖')
+            payload=await request.json()
+            if not isinstance(payload,dict):raise ValueError('安装清单格式错误')
+            await asyncio.to_thread(downloads.auto_detect_proxy)
+            return web.json_response(await asyncio.to_thread(dependency_manager.start,payload.get('keys')))
+        except (ValueError,TypeError) as error:return web.json_response({'error':str(error)},status=400)
