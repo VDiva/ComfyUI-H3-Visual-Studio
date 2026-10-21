@@ -11,6 +11,7 @@ const server=http.createServer(async(req,res)=>{
   if(data.action==='start')state={...state,running:true,nodes:['A','B'],selected:'A'};
   if(data.action==='select')state.selected=data.name;
   if(data.action==='stop')state.running=false;
+  if(data.action==='delete-subscription')state={...state,running:false,subscribed:false,nodes:[],selected:''};
   state.message='已处理 '+data.action;
  }
  res.setHeader('Content-Type','application/json');res.end(JSON.stringify(state));
@@ -29,6 +30,12 @@ try{
  await page.locator('#proxy-test').click();await page.waitForFunction(()=>document.querySelector('#proxy-core-status').textContent.includes('已处理 test'));
  await page.locator('#proxy-stop').click();await page.waitForFunction(()=>document.querySelector('#proxy-stop').disabled);
  assert.deepEqual(actions,['install','subscribe','start','select','refresh','test','stop']);assert.deepEqual(errors,[]);
+ await page.locator('#proxy-start').click();await page.waitForFunction(()=>!document.querySelector('#proxy-node').disabled);
+ await page.getByLabel('代理订阅链接').fill('unsaved secret');await page.getByRole('button',{name:'删除订阅信息',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector('#proxy-core-status').textContent.includes('已处理 delete-subscription'));
+ assert.equal(await page.getByLabel('代理订阅链接').inputValue(),'');assert.equal(await page.locator('#proxy-start').isDisabled(),true);
+ assert.equal(await page.locator('#proxy-delete-subscription').isDisabled(),true);assert.equal(await page.locator('#proxy-node').isDisabled(),true);
+ assert.equal(await page.locator('#proxy-install').isDisabled(),false);assert.equal(actions.at(-1),'delete-subscription');
  await page.evaluate(()=>window.controller.dispose());assert.equal(await page.locator('#proxy-core-panel').count(),0);
  console.log('PASS install/subscribe/start/select/refresh/test/stop UI, secret input clearing, control states and disposal');
 }finally{await browser?.close();await new Promise(r=>server.close(r));}

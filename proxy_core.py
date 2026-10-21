@@ -74,7 +74,7 @@ class ProxyCore:
  def start_action(self,payload):
   if not isinstance(payload,dict):raise ValueError('请求格式错误')
   action=payload.get('action')
-  if action not in {'install','subscribe','start','stop','refresh','select','test'}:raise ValueError('代理操作无效')
+  if action not in {'install','subscribe','delete-subscription','start','stop','refresh','select','test'}:raise ValueError('代理操作无效')
   value=payload.get('url','') if action=='subscribe' else payload.get('name','')
   if action=='subscribe':value=subscription_url(value)
   if action=='select' and (not isinstance(value,str) or value not in self.nodes):raise ValueError('请选择当前订阅中的节点')
@@ -91,6 +91,7 @@ class ProxyCore:
     if self.process is not None:raise ValueError('请先停止代理，再更换订阅')
     self.settings['subscription']=value;self._write(self.root/'settings.local.json',self.settings);self.message='订阅已保存，点击开启代理加载节点'
    elif action=='start':self.start()
+   elif action=='delete-subscription':self.delete_subscription()
    elif action=='stop':self.stop();self.message='代理已停止，下载代理已恢复'
    elif action=='refresh':
     self._api('/providers/proxies/'+PROVIDER,'PUT',timeout=30);self._nodes();self.message='订阅已更新'
@@ -188,6 +189,15 @@ class ProxyCore:
    self.previous=previous;self.settings.update(previous_proxy=previous,managed_proxy=self.address);self._write(self.root/'settings.local.json',self.settings)
    self._set_proxy(self.address);self.state='running';self.message='代理已开启，插件的官方源下载将使用所选节点'
   except Exception:self.stop();raise
+
+ def delete_subscription(self):
+  self.stop()
+  # Remove only private subscription/configuration artifacts. Keep the installed
+  # core, its original license and provenance so it can be reused independently.
+  for name in ('config.local.json','config.local.json.tmp','subscription.yaml','subscription.yaml.tmp','cache.db','cache.db-wal','cache.db-shm','settings.local.json.tmp','settings.local.json'):
+   (self.root/name).unlink(missing_ok=True)
+  self.settings={};self.secret='';self.previous='';self.port=0;self.control=0
+  self.message='订阅信息及节点缓存已删除，代理已停止；内核保留，可保存新订阅'
 
  def _restore(self):
   managed=self.settings.get('managed_proxy')

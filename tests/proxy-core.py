@@ -83,5 +83,18 @@ with tempfile.TemporaryDirectory() as temp:
   try:core.start_action({'action':'stop'});raise AssertionError('concurrent action accepted')
   except ValueError:pass
   core.busy=False
+  core.start();child=core.process
+  for name in ('subscription.yaml','cache.db','cache.db-wal','cache.db-shm'):(core.root/name).write_text('PRIVATE_TEST_TOKEN',encoding='utf-8')
+  core.start_action({'action':'delete-subscription'})
+  for _ in range(100):
+   if not core.busy:break
+   time.sleep(.01)
+  assert not core.busy and not core.snapshot()['subscribed'] and not core.snapshot()['running']
+  assert child.stopped and d.proxy_address=='http://127.0.0.1:9999'
+  assert core.snapshot()['nodes']==[] and core.secret==''
+  assert sorted(p.name for p in core.root.iterdir())==sorted([Path(core.executable()).name,'LICENSE-Mihomo','installation.local.json'])
+  core.delete_subscription()  # Deletion is safe to repeat.
+  clean=m.ProxyCore(temp,d,save_proxy=saved.append,popen=Process,sleeper=lambda _:None)
+  assert not clean.snapshot()['subscribed'];clean.close()
  finally:core.close()
 print('PASS core installer integrity/license, secret-free status, subscription persistence, loopback config, node selection, owned process lifecycle, proxy restore/manual override and restart recovery')
