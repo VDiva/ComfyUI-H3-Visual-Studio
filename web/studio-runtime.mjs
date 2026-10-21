@@ -1,25 +1,26 @@
-import {backgroundBatch} from './background-batch.mjs?v=0.12.1';
-import {generationSummary} from './generation-summary.mjs?v=0.12.1';
-import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.12.1';
-import {openVideoCompare} from './video-compare.mjs?v=0.12.1';
-import {mountDependencies} from './dependencies.mjs?v=0.12.1';
-import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.12.1';
-import {mountSelfLift,selfLiftApi} from './selflift.mjs?v=0.12.1';
-import {mountFinishing,finishApi,syncFinishingResolution} from './finishing.mjs?v=0.12.1';
-import {executionProgress} from './execution-progress.mjs?v=0.12.1';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.12.1';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.12.1';
-import {openFolderTemplate} from './folder-template.mjs?v=0.12.1';
-import {livePreview} from './live-preview.mjs?v=0.12.1';
-import {modelDownloader} from './model-download.mjs?v=0.12.1';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.12.1';
-import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.12.1';
+import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.13.0';
+import {backgroundBatch} from './background-batch.mjs?v=0.13.0';
+import {generationSummary} from './generation-summary.mjs?v=0.13.0';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.13.0';
+import {openVideoCompare} from './video-compare.mjs?v=0.13.0';
+import {mountDependencies} from './dependencies.mjs?v=0.13.0';
+import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.13.0';
+import {mountSelfLift,selfLiftApi} from './selflift.mjs?v=0.13.0';
+import {mountFinishing,finishApi,syncFinishingResolution} from './finishing.mjs?v=0.13.0';
+import {executionProgress} from './execution-progress.mjs?v=0.13.0';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.13.0';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.13.0';
+import {openFolderTemplate} from './folder-template.mjs?v=0.13.0';
+import {livePreview} from './live-preview.mjs?v=0.13.0';
+import {modelDownloader} from './model-download.mjs?v=0.13.0';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.13.0';
+import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.13.0';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.12.1';
-import './folder-core.js?v=0.12.1';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.12.1';
-import {buildOfficialImport,verifyOfficialImport} from './official-import.mjs?v=0.12.1';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.13.0';
+import './folder-core.js?v=0.13.0';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.13.0';
+import {buildOfficialImport,verifyOfficialImport} from './official-import.mjs?v=0.13.0';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -45,7 +46,7 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.12.1</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.13.0</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组官方工作流</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
@@ -92,7 +93,7 @@ function attach(node){
  const stepStatus=document.createElement('div');stepStatus.className='status';stepStatus.style.cssText='white-space:pre-wrap;flex-shrink:0';stepStatus.textContent='当前步骤：等待任务';stepStatus.setAttribute('role','status');$('status').before(stepStatus);
  const previewStep=document.createElement('div');previewStep.style.cssText='white-space:pre-wrap;color:#8aefcf;font-weight:600;padding:8px 0';previewStep.textContent='当前步骤：等待任务';$('live-label').before(previewStep);
  const progressTracker=executionProgress({api,show:text=>{stepStatus.textContent='当前步骤：'+text;previewStep.textContent='当前步骤：'+text;}});
- function setBusy(value){busy=value;$('add-page').disabled=value;$('delete-page').disabled=value||batchController.active;$('edit').disabled=value||batchController.active;for(const id of ['run','run-one'])$(id).disabled=value||batchController.active;$('resume').disabled=value;$('merge').disabled=value||batchController.active;compareButton.disabled=value||batchController.active;$('stop').disabled=!value&&!batchController.active;}
+ function setBusy(value){busy=value;$('add-page').disabled=value;$('delete-page').disabled=value||batchController.active||pluginUpdateBlocked();$('edit').disabled=value||batchController.active||pluginUpdateBlocked();for(const id of ['run','run-one'])$(id).disabled=value||batchController.active||pluginUpdateBlocked();$('resume').disabled=value;$('merge').disabled=value||batchController.active;compareButton.disabled=value||batchController.active||pluginUpdateBlocked();$('stop').disabled=!value&&!batchController.active;}
  function current(){return project.groups[selected];}
 
  let lastBatchPrompt=null;
@@ -112,6 +113,9 @@ function attach(node){
   render();setBusy(busy);
  }});
  batchResume.onclick=()=>{void batchController.action('resume').catch(e=>log(e.message));};
+ const updater=mountPluginUpdater({container:panels.models,api,log,onState:()=>setBusy(busy)});
+ const updateButton=document.createElement('button');updateButton.id='check-plugin-update';updateButton.textContent='检查更新';updateButton.onclick=()=>{showPanel('models');void updater.check();};fileActions.append(updateButton);
+ const updateStateChanged=()=>setBusy(busy);window.addEventListener('h3-plugin-update-state',updateStateChanged);
  const finishingController=mountFinishing({onSettingsChanged:()=>render(),container:panels.finishing,api,getProject:()=>project,getGroup:current,persist,preview,view,log,isBusy:()=>busy,setBusy,onQueued:(id,prompt)=>progressTracker.watch(id,prompt,'已有视频AI超分'),onFinished:id=>progressTracker.finish(id),openModelDownloads:async()=>{showPanel('models');const key=(project.selflift?.enabled||project.finishing?.upscale==='latent')?'models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors':'models/upscale_models/RealESRGAN_x4.pth';await downloader.show({missing:[key]});log('点击模型旁的下载按钮，安装完成后返回视频精修与放大，刷新并选择模型。');}});
  const selfliftController=mountSelfLift({container:panels.finishing,getProject:()=>project,persist,onChange:()=>{syncSettings();render();},log});
  const recipeController=mountDirectorRecipe({container:panels.finishing,getProject:()=>project,persist,onChange:()=>{syncSettings();render();},log});
@@ -318,7 +322,7 @@ function attach(node){
  }
  $('merge').onclick=async()=>{if(busy||batchController.active)return;setBusy(true);try{await mergeGroups(project.groups.filter(g=>g.selected!==false));}catch(error){log(error.message);}finally{setBusy(false);}};
  async function run(one){
-  if(busy||batchController.active){log('此页有未结束后台批次，请先查询或停止后续提交。');return;}const chosen=one?[current()]:project.groups.filter(g=>g.selected!==false);if(!chosen.length||!chosen[0]){log('请先选择素材组');return;}
+  if(busy||batchController.active||pluginUpdateBlocked()){log('插件更新中或此页有未结束后台批次，请先查询或停止后续提交。');return;}const chosen=one?[current()]:project.groups.filter(g=>g.selected!==false);if(!chosen.length||!chosen[0]){log('请先选择素材组');return;}
   setBusy(true);stop=false;
   try{persist();const graph=await app.graphToPrompt();await checkAllModels(graph);await ensureCharacterImages(chosen,graph);if(stop||disposed)throw Error('已停止后续生成');const snapshot=structuredClone(project);const requests=new Map();for(const g of chosen){const copy=snapshot.groups.find(v=>v.id===g.id);requests.set(g.id,compileRequest(graph.output,snapshot,copy));}
    const items=chosen.map(g=>{const request=requests.get(g.id),workflow=structuredClone(graph.workflow);workflow.extra ||= {};workflow.extra.h3_visual_request={pageId:project.pageId,groupId:g.id,groupNumber:g.number};return {groupId:g.id,label:'分段'+g.number,prompt:request.prompt,workflow};});
@@ -352,8 +356,8 @@ function attach(node){
  setTimeout(()=>{if(!disposed)downloader.resume();},0);
  const dom=node.addDOMWidget('h3_visual','H3Visual',host,{serialize:false,hideOnZoom:false});dom.computeSize=()=>[1760,1020];
  node.setSize([1800,1100]);host.addEventListener('pointerdown',e=>e.stopPropagation());host.addEventListener('keydown',e=>e.stopPropagation());
- const state={installModels,importChapters,getMode:()=>project.mode,isBusy:()=>busy||workspace.pages.some(p=>['submitting','unknown','queued','running','merging','paused'].includes(p.batch?.state)),async queueCurrent(number,data,send,options){
-  if(busy||batchController.active)throw Error('可视化工作室已有任务或后台批次，请等待或停止后续提交');
+ const state={installModels,importChapters,getMode:()=>project.mode,isBusy:()=>busy||pluginUpdateBlocked()||workspace.pages.some(p=>['submitting','unknown','queued','running','merging','paused'].includes(p.batch?.state)),async queueCurrent(number,data,send,options){
+  if(busy||batchController.active||pluginUpdateBlocked())throw Error('插件更新中或可视化工作室已有任务或后台批次，请等待或停止后续提交');
   const g=current();if(!g)throw Error('请先在可视化工作室中导入素材或添加分组');
   setBusy(true);stop=false;
   try{
@@ -362,7 +366,7 @@ function attach(node){
    const response=await send(number,{output:request.prompt,workflow},options);if(!response?.prompt_id)throw Error('服务器未返回任务ID');g.job={state:'queued',promptId:response.prompt_id};preview.watch(response.prompt_id);persist();render();log(`当前组已通过ComfyUI运行按钮提交：${response.prompt_id}；结果将自动更新。`);
    const queuedPageId=project.pageId;void waitJob(response.prompt_id).then(history=>{if(disposed||g.job?.promptId!==response.prompt_id)return;g.job.state=history.status?.status_str==='success'?'done':'error';g.job.videos=resultVideos(history);g.job.originalVideos=originalVideos(history);persist();if(project.pageId===queuedPageId){render();if(g.job.videos[0])preview.video(view({...g.job.videos[0],type:'output'}),'当前组视频已完成，可播放声音');}}).catch(error=>{if(!disposed)log('结果自动查询中断：'+error.message+'；可点击查询已提交任务。');});return response;
   }finally{setBusy(false);}
- },refresh(){try{workspace=readWorkspace(widget.value);project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;syncSettings();render();}catch(error){log('工程数据错误：'+error.message);}},dispose(){if(expanded)toggleExpanded(false);disposed=true;stop=true;batchController.dispose();progressTracker.dispose();downloader.dispose();dependencyController.dispose();finishingController.dispose();resourceEditor.dispose();commonResourceEditor.dispose();preview.dispose();document.removeEventListener('keydown',escape);placeholder?.remove();host.remove();}};states.set(node,state);render();setTimeout(()=>{if(!disposed)void batchController.query({discover:true});},0);
+ },refresh(){try{workspace=readWorkspace(widget.value);project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;syncSettings();render();}catch(error){log('工程数据错误：'+error.message);}},dispose(){if(expanded)toggleExpanded(false);disposed=true;stop=true;updater.dispose();window.removeEventListener('h3-plugin-update-state',updateStateChanged);batchController.dispose();progressTracker.dispose();downloader.dispose();dependencyController.dispose();finishingController.dispose();resourceEditor.dispose();commonResourceEditor.dispose();preview.dispose();document.removeEventListener('keydown',escape);placeholder?.remove();host.remove();}};states.set(node,state);render();setTimeout(()=>{if(!disposed)void batchController.query({discover:true});},0);
 }
 app.registerExtension({name:'H3.Visual.Studio.Official',setup(){
  const send=api.queuePrompt.bind(api);

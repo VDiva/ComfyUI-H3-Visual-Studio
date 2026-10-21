@@ -1,3 +1,30 @@
+# 0.13.0 GitHub插件更新
+
+更新源固定为 [VDiva/MiniMaxH3Plugin](https://github.com/VDiva/MiniMaxH3Plugin) 的默认分支。工作室顶部“检查更新”、模型与下载页“插件版本与更新”、右上角H3菜单均可进入。点击“检查更新”后，有新版本或未同步提交才显示“更新插件”；必须手动点击才下载覆盖。
+
+更新器下载检查时锁定的提交，显示下载进度与速度；校验目录结构、版本及Python语法后暂存安装。保留本地代理配置、Git元数据、隐藏配置、用户目录和未随远端提供的FFmpeg文件；不下载/覆盖模型目录。替换前在custom_nodes旁生成`插件名.backup-时间.disabled`备份（仍位于custom_nodes内，以.disabled结尾避免ComfyUI加载）。替换失败时尝试恢复原目录。新版本对同名源码的覆盖是更新的正常行为，本地源码改动可从备份找回。
+
+ComfyUI队列、后台批次、模型下载、依赖安装、视频处理和合并未结束时不允许安装；下载暂存后会再次核对任务状态。更新完成需要手动重启ComfyUI并Ctrl+F5刷新，不会自动中断服务器或自动安装新依赖。重启后按模型/依赖检测结果操作。备份不自动删除，可在确认新版本正常且服务停止后自行清理。
+
+## 首次发布与以后更新
+
+1. 第一次需将本次完整插件手动部署到实例并重启，旧版没有更新接口，不能仅靠上传GitHub让旧实例自动获得此按钮。
+2. GitHub仓库根目录放`__init__.py`、`web/`、`version.json`等完整插件源码；也支持根目录下单独的`ComfyUI-H3-Visual-Studio/`子目录。不要只上传一个ZIP。
+3. `version.json`固定格式如下，发布新版时递增version：
+
+```json
+{"project":"ComfyUI-H3-Visual-Studio","version":"0.13.0"}
+```
+
+4. 用户点击检查→发现更新→点击更新插件→等待提示→重启ComfyUI→强制刷新浏览器。
+5. 第一次没有提交记录、但远端版本号相同时，允许手动同步一次建立提交记录；以后相同版本号的新提交也可检测。远端版本低于本地时不提供降级。
+
+仓库不可访问、缺版本文件、限流或下载失败会显示错误并保留原插件。私有仓库可在云端配置`GITHUB_TOKEN`，Token不在界面显示或写入更新记录。网络沿用插件下载代理配置和自动检测。权重、输出视频和工程不需要上传到代码仓库，新增.gitignore用于排除本地缓存、代理配置和更新状态。
+
+验证覆盖模拟GitHub检查/下载、两种仓库布局、配置保留、备份、替换失败恢复、任务忙时拒绝、固定提交、越界包拒绝及浏览器交互。未在用户云端进行实际覆盖升级。
+
+---
+
 # 0.12.0 自动人物生图切换到Qwen-Image-2.1
 
 默认采用Comfy-Org/Qwen-Image-2.1仓库的Turbo INT8版本：8步、CFG 1、Euler/simple，配套Qwen3-VL 8B W4A8和专用VAE。使用官方`TextEncodeQwenImage21`、`QwenImage21Cache`、`EmptyLatentImage`、`KSampler`、`VAEDecode`、`SaveImage`链路；不沿用Z-Image的lumina2编码和AuraFlow采样补丁，不叠加Turbo LoRA，也不额外下载提示词增强模型。当前用途是文生人物参考图，尚未接入Qwen图像编辑。

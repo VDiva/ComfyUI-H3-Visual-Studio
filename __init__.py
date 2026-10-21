@@ -1,5 +1,11 @@
 """Visual project metadata only. Sampling is performed by official ComfyUI nodes."""
 import json
+video_processing_jobs = None
+
+def ensure_update_idle():
+    updater=globals().get("plugin_updater")
+    if updater and (updater.updating or updater.restart_required):
+        raise ValueError("插件正在更新或已更新等待重启，请重启ComfyUI后再提交任务")
 
 class H3VisualProject:
     @classmethod
@@ -25,14 +31,18 @@ NODE_CLASS_MAPPINGS['H3DirectorLatentUpscale']=H3DirectorLatentUpscale
 NODE_DISPLAY_NAME_MAPPINGS['H3DirectorLatentUpscale']='H3 Director 3D latent放大'
 
 def register_video_processing():
+    global video_processing_jobs
     if PromptServer is None: return
     from aiohttp import web
     import folder_paths
     from .video_process import VideoJobs
     jobs=VideoJobs(folder_paths.get_output_directory())
+    video_processing_jobs=jobs
     @PromptServer.instance.routes.post("/h3_visual_studio/process")
     async def start_video_process(request):
-        try: return web.json_response(jobs.start(await request.json()))
+        try:
+            ensure_update_idle()
+            return web.json_response(jobs.start(await request.json()))
         except (ValueError,TypeError,OSError) as error: return web.json_response({"error":str(error)},status=400)
     @PromptServer.instance.routes.get("/h3_visual_studio/process/{job_id}")
     async def video_process_status(request):
@@ -58,6 +68,7 @@ if PromptServer is not None:
     @PromptServer.instance.routes.post("/h3_visual_studio/merge")
     async def merge_videos(request):
         try:
+            ensure_update_idle()
             payload = await request.json()
             if not isinstance(payload, dict):
                 raise ValueError("请求格式错误")
@@ -86,6 +97,7 @@ if PromptServer is not None:
     @PromptServer.instance.routes.post("/h3_visual_studio/models/download")
     async def start_model_download(request):
         try:
+            ensure_update_idle()
             payload = await request.json()
             if not isinstance(payload, dict): raise ValueError("请求格式错误")
             return web.json_response({"jobs":downloads.start(payload.get("keys"))})
@@ -145,6 +157,7 @@ if PromptServer is not None:
     @PromptServer.instance.routes.post('/h3_visual_studio/dependencies/install')
     async def install_dependencies(request):
         try:
+            ensure_update_idle()
             if PromptServer.instance.prompt_queue.get_tasks_remaining()>0:raise ValueError('请等待ComfyUI生成队列结束后再安装运行依赖')
             payload=await request.json()
             if not isinstance(payload,dict):raise ValueError('安装清单格式错误')
@@ -177,6 +190,7 @@ if PromptServer is not None:
     @PromptServer.instance.routes.post("/h3_visual_studio/batches")
     async def start_batch(request):
         try:
+            ensure_update_idle()
             batch_connect(request)
             return web.json_response(batches.start(await request.json()))
         except (ValueError,TypeError,OSError) as error:
@@ -190,6 +204,33 @@ if PromptServer is not None:
         try:
             batch_connect(request)
             action=request.match_info["action"]
+            if action=="resume":ensure_update_idle()
             if action not in ("stop","resume"): raise ValueError("不支持的批次操作")
             return web.json_response(getattr(batches,action)(request.match_info["batch_id"]))
         except (ValueError,OSError) as error: return web.json_response({"error":str(error)},status=400)
+
+if PromptServer is not None:
+    from .plugin_update import PluginUpdater
+    from .merge_video import _LOCK as merge_lock
+    def plugin_busy_reason():
+        if PromptServer.instance.prompt_queue.get_tasks_remaining()>0:return "请等待ComfyUI生成队列结束后再更新插件"
+        if any(j.get('state') in {'queued','running','merging','paused'} for j in list(batches.jobs.values())):return "请先完成或停止后台批次，再更新插件"
+        if merge_lock.locked():return "FFmpeg正在合并，请完成后再更新插件"
+        if video_processing_jobs and any(j.get('state') in {'queued','running'} for j in list(video_processing_jobs.jobs.values())):return "视频处理尚未完成，请稍后更新"
+        if any(j.get('state') not in {'done','error'} for j in list(downloads.jobs.values())):return "模型正在下载，请完成后再更新插件"
+        if any(j.get('state') in {'queued','installing'} for j in list(dependency_manager.jobs.values())):return "依赖正在安装，请完成后再更新插件"
+        return None
+    plugin_updater=PluginUpdater(Path(__file__).resolve().parent,opener=lambda *a,**kw:downloads.opener(*a,**kw),busy=plugin_busy_reason,prepare=lambda:downloads.auto_detect_proxy())
+    @PromptServer.instance.routes.get('/h3_visual_studio/plugin-update')
+    async def plugin_update_status(request):return web.json_response(plugin_updater.snapshot())
+    @PromptServer.instance.routes.post('/h3_visual_studio/plugin-update/check')
+    async def check_plugin_update(request):
+        try:return web.json_response(plugin_updater.check())
+        except ValueError as error:return web.json_response({'error':str(error)},status=400)
+    @PromptServer.instance.routes.post('/h3_visual_studio/plugin-update/install')
+    async def install_plugin_update(request):
+        try:
+            payload=await request.json()
+            if not isinstance(payload,dict):raise ValueError('更新请求格式错误')
+            return web.json_response(plugin_updater.install(payload.get('commit')))
+        except (ValueError,OSError) as error:return web.json_response({'error':str(error)},status=400)

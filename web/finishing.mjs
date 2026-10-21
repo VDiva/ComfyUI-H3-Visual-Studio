@@ -1,7 +1,7 @@
-import {openVideoCompare} from './video-compare.mjs?v=0.12.1';
-import {attentionModel} from './director-recipe.mjs?v=0.12.1';
-import {MEGAPIXELS} from './resolution.mjs?v=0.12.1';
-import {modelReport,assertModels,modelChoices} from './model-check.mjs?v=0.12.1';
+import {openVideoCompare} from './video-compare.mjs?v=0.13.0';
+import {attentionModel} from './director-recipe.mjs?v=0.13.0';
+import {MEGAPIXELS} from './resolution.mjs?v=0.13.0';
+import {modelReport,assertModels,modelChoices} from './model-check.mjs?v=0.13.0';
 export const FINISH_MEGAPIXELS=Array.from({length:40},(_,i)=>(i+1)/10);
 export const LATENT_MODEL='minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors';
 export const defaultFinishing=()=>({defaultsVersion:1,refine:true,steps:4,denoise:0.15,passes:1,upscale:'latent',megapixels:1,model:'RealESRGAN_x4.pth',latentModel:LATENT_MODEL,chunking:true});

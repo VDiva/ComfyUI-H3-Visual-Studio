@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.env
+.env.*
+download-proxy.json
+.h3-update-state.json
+*.local.json
+tests/.fixtures/
+tests/*.png

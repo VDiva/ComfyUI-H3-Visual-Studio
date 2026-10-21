@@ -1,0 +1,17 @@
+let latest=null;
+export const pluginUpdateBlocked=()=>['downloading','validating','installing','restart_required'].includes(latest?.state);
+export function mountPluginUpdater({container,api,log=()=>{},onState=()=>{}}){
+ const doc=container.ownerDocument,box=doc.createElement('section');box.className='library plugin-updater';box.style.cssText='padding:10px;border:1px solid #385565;border-radius:8px;margin-top:8px;white-space:normal';container.append(box);
+ const title=doc.createElement('div');title.textContent='插件版本与更新';title.style.fontWeight='600';const label=doc.createElement('p');label.textContent='VDiva/MiniMaxH3Plugin';label.style.cssText='font-size:12px;overflow-wrap:anywhere';const check=doc.createElement('button');check.textContent='检查更新';check.dataset.updateAction='check';const install=doc.createElement('button');install.textContent='更新插件';install.dataset.updateAction='install';install.hidden=true;const message=doc.createElement('p');message.style.cssText='font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere';message.setAttribute('role','status');const bar=doc.createElement('progress');bar.style.cssText='width:100%;height:10px';bar.hidden=true;box.append(title,label,check,install,message,bar);
+ let disposed=false,timer=null,state=null,requesting=false;
+ const busy=s=>['checking','downloading','validating','installing'].includes(s);
+ const size=n=>(n/1024**2).toFixed(1)+' MB';
+ function paint(data){if(disposed)return;state=data;latest=data;const progress=data.state==='downloading';label.textContent='当前 v'+data.current_version+' · '+data.repository+(data.remote_version?' · 远端 v'+data.remote_version:'');message.textContent=(data.message||'')+(data.commit?'\n提交 '+data.commit.slice(0,12):'')+(progress?'\n'+size(data.bytes||0)+(data.total?' / '+size(data.total):'')+' · '+size(data.speed||0)+'/s':'')+(data.backup?'\n旧版备份：'+data.backup:'');
+ check.disabled=busy(data.state)||data.state==='restart_required';install.hidden=!(data.available&&data.state==='available');install.disabled=busy(data.state);bar.hidden=!busy(data.state);bar.max=data.total||1;if(progress&&data.total)bar.value=data.bytes||0;else bar.removeAttribute('value');onState(data);window.dispatchEvent(new CustomEvent('h3-plugin-update-state',{detail:data}));if(busy(data.state))schedule();}
+ function schedule(){clearTimeout(timer);if(!disposed)timer=setTimeout(()=>void refresh(),1200);}
+ async function request(suffix='',method='GET',body){const response=await api.fetchApi('/h3_visual_studio/plugin-update'+suffix,{method,...(body?{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});let data;try{data=await response.json();}catch{throw Error('更新接口不可用，请先完整安装含此功能的插件并重启ComfyUI');}if(!response.ok)throw Error(data.error||'插件更新请求失败');return data;}
+ async function refresh(){try{paint(await request());}catch(e){if(disposed)return;message.textContent=e.message;if(busy(state?.state))schedule();}}
+ async function action(suffix,body){if(requesting||disposed)return;requesting=true;check.disabled=true;install.disabled=true;try{paint(await request(suffix,'POST',body));}catch(e){message.textContent=e.message;log(e.message);}finally{requesting=false;if(state&&!disposed){check.disabled=busy(state.state)||state.state==='restart_required';install.disabled=busy(state.state);}}}
+ check.onclick=()=>action('/check');install.onclick=()=>action('/install',{commit:state?.commit});void refresh();
+ return {check:()=>action('/check'),refresh,dispose(){disposed=true;clearTimeout(timer);box.remove();}};
+}
