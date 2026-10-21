@@ -1,23 +1,23 @@
-import {applyDirectorPreset} from './director-recipe.mjs?v=0.15.1';
-import {directorCoreRequest} from './director-core.mjs?v=0.15.1';
-import {defaultSelfLift} from './selflift.mjs?v=0.15.1';
-import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.15.1';
-import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.15.1';
-import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.15.1';
+import {applyDirectorPreset} from './director-recipe.mjs?v=0.15.2';
+import {directorCoreRequest} from './director-core.mjs?v=0.15.2';
+import {defaultSelfLift} from './selflift.mjs?v=0.15.2';
+import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.15.2';
+import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.15.2';
+import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.15.2';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];
 export const defaultProject = () => applyDirectorPreset({version:1,name:'未命名项目',mode:'reference',autoMerge:false,finishing:{...defaultFinishing(),refine:false,upscale:'off'},selflift:defaultSelfLift(),characters:[],imageSettings:defaultImageSettings(),commonPrompt:'',audioReference:false,
   settings:{width:864,height:480,steps:8,seed:666,sampler:'euler',scheduler:'simple',acceleration:'inherit'},
-  media:{images:[],audios:[],videos:[]},groups:[]},false);
+  media:{images:[],audios:[],videos:[]},groups:[]},true);
 export function readProject(raw) {
   const base=defaultProject();
   const value=typeof raw==='string' ? JSON.parse(raw || '{}') : structuredClone(raw || {});
   if(!value || typeof value!=='object' || Array.isArray(value))throw Error('工程必须为JSON对象');
   const result={...base,...value,imageSettings:normalizeImageSettings(value.imageSettings),settings:{...base.settings,...value.settings},media:{...base.media,...value.media}};
   // Missing presets adopt the current default; explicit saved choices remain unchanged.
-  const finishing={...defaultFinishing(),...value.finishing};
-  if(value.finishing?.defaultsVersion!==1)Object.assign(finishing,{defaultsVersion:1,refine:true,upscale:'latent',chunking:true,steps:4});
+  const finishing={...(value.finishing?defaultFinishing():base.finishing),...value.finishing};
+  if(value.finishing&&value.finishing.defaultsVersion!==1)Object.assign(finishing,{defaultsVersion:1,refine:true,upscale:'latent',chunking:true,steps:4});
   result.finishing=finishing;result.selflift={...defaultSelfLift(),enabled:false,...value.selflift};
   if(!['reference','auto_character'].includes(result.mode)||!Array.isArray(result.characters))throw Error('工作流模式或人物列表无效');
   accelerationMode(result.settings);

@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {defaultProject,compileRequest,resultVideos,originalVideos} from '../web/project.mjs';
 import {modelReport} from '../web/model-check.mjs';
+import {applyDirectorPreset} from '../web/director-recipe.mjs';
 const base=JSON.parse(await fs.readFile(new URL('./.fixtures/官方采样API基线.json',import.meta.url),'utf8'));
 const original=JSON.stringify(base);
 const schemas=[];
 const group={id:'g',number:3,seconds:4,prompt:'<Picture 99> <Audio 20> <Video 8> test'};
-function project(){const p=defaultProject();p.audioReference=true;p.media={images:[{id:99,file:'images/face.png'}],audios:[{id:20,file:'voice.wav'}],videos:[{id:8,file:'clip.mp4'}]};return p;}
+function project(){const p=applyDirectorPreset(defaultProject(),false);p.audioReference=true;p.media={images:[{id:99,file:'images/face.png'}],audios:[{id:20,file:'voice.wav'}],videos:[{id:8,file:'clip.mp4'}]};return p;}
 function compile(p){return compileRequest(base,p,group).prompt;}
 function node(graph,type){const found=Object.entries(graph).filter(([,n])=>n.class_type===type);assert.equal(found.length,1,type);return found[0];}
 for(const upscale of ['off','latent','lanczos','model'])for(const refine of [false,true]){

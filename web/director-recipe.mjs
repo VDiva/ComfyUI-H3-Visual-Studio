@@ -4,7 +4,7 @@ export const REFINE_MODEL='minimax_h3_ref2va_pruned_w4a8_mixed.safetensors';
 export function attentionModel(add,model,enabled){return enabled?add('PathchSageAttentionKJ',{model,sage_attention:'auto',allow_compile:false}):model;}
 export function applyDirectorPreset(project,exact=false){
  project.selflift={...project.selflift,enabled:false};
- project.settings={...project.settings,width:864,height:480,megapixels:0.4,steps:8,sampler:'res_multistep',scheduler:'simple',acceleration:'director8',directorBaseModel:exact?'minimax_h3_fl2va_pruned_int8_convrot.safetensors':'',sageAttention:false};
+ project.settings={...project.settings,width:864,height:480,megapixels:0.4,steps:8,sampler:'res_multistep',scheduler:'simple',acceleration:'director8',directorBaseModel:exact?'minimax_h3_fl2va_pruned_int8_convrot.safetensors':'',sageAttention:exact};
  project.finishing={...project.finishing,refine:true,upscale:'latent',steps:3,denoise:0.2,passes:1,scheduler:'beta',megapixels:exact?2:0.8,chunking:true,dualModel:exact,refineModel:REFINE_MODEL,refineLora:TURBO4};
  return project;
 }

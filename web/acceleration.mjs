@@ -1,4 +1,4 @@
-import {TURBO8,attentionModel} from './director-recipe.mjs?v=0.15.1';
+import {TURBO8,attentionModel} from './director-recipe.mjs?v=0.15.2';
 // Independent integration of the documented DMAD stock-node recipe; no AICG3D code copied.
 export const DMAD_LORA='dmad_minimax_h3_4step_full_critic_comfyui.safetensors';
 export const ACCELERATION_MODES=[['director8','导演台 Turbo8（res_multistep/simple）'],['inherit','沿用原图（原Turbo/步数）'],['dmad4','DMAD 四步加速（需下载LoRA）'],['dmad8','DMAD 八步（动作质量对照）']];
