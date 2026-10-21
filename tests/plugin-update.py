@@ -55,7 +55,7 @@ print('PASS proxy retained for GitHub requests, stopped before replacement, rest
 for layout in ('',m.PROJECT):
  with tempfile.TemporaryDirectory() as tmp:
   folder=local(tmp);updater=m.PluginUpdater(folder,opener=GitHub(subdir=layout));ready(updater);updater.install(SHA);updater.worker.join(5);s=updater.snapshot();assert s['state']=='restart_required',s
-  assert (folder/'__init__.py').read_text()=='VALUE="new"';assert (folder/'download-proxy.json').read_text()=='local proxy';assert (folder/'ffmpeg/ffmpeg').read_text()=='local executable';assert (folder/'models/user.bin').read_text()=='user weights';assert (Path(s['backup'])/'__init__.py').read_text()=='VALUE="old"';assert Path(s['backup']).name.endswith('.disabled')
+  assert (folder/'__init__.py').read_text()=='VALUE="new"';assert (folder/'download-proxy.json').read_text()=='local proxy';assert (folder/'ffmpeg/ffmpeg').read_text()=='local executable';assert (folder/'models/user.bin').read_text()=='user weights';assert s['backup'] is None;assert not list(Path(tmp).glob('.h3-update-*'));assert not list(Path(tmp).glob('*.backup-*'))
   again=m.PluginUpdater(folder,opener=GitHub(subdir=layout));again.check();again.worker.join(5);assert again.snapshot()['state']=='current'
 with tempfile.TemporaryDirectory() as tmp:
  folder=local(tmp);updater=m.PluginUpdater(folder,opener=GitHub(),busy=lambda:'generation is running');ready(updater)
@@ -78,7 +78,7 @@ with tempfile.TemporaryDirectory() as tmp:
   except ValueError:pass
 with tempfile.TemporaryDirectory() as tmp:
  folder=local(tmp);updater=m.PluginUpdater(folder,opener=GitHub(version='0.13.0'));ready(updater);assert '尚未同步' in updater.snapshot()['message']
-print('PASS root/nested repositories, check/install, immutable SHA, configuration/model/FFmpeg preservation, disabled backup, idempotence, downgrade and busy blocking, rollback and malicious paths')
+print('PASS root/nested repositories, check/install, immutable SHA, configuration/model/FFmpeg preservation, no retained backup, idempotence, downgrade and busy blocking, rollback and malicious paths')
 
 with tempfile.TemporaryDirectory() as tmp:
  folder=local(tmp);calls=[]

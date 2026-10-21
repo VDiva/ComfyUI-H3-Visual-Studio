@@ -155,7 +155,7 @@ class PluginUpdater:
         token=uuid.uuid4().hex
         incoming=self.root.parent/('.h3-update-source-'+token+'.disabled')
         stage=self.root.parent/('.h3-update-stage-'+token+'.disabled')
-        backup=self.root.parent/(self.root.name+'.backup-'+time.strftime('%Y%m%d-%H%M%S')+'-'+token[:6]+'.disabled')
+        backup=self.root.parent/('.h3-update-rollback-'+token+'.disabled')
         moved=False
         try:
             self.prepare()
@@ -183,7 +183,7 @@ class PluginUpdater:
             # Keep the proxy alive for every GitHub request, then stop an owned
             # core before copying/swapping its executable and private settings.
             self.before_install()
-            self.update(state='installing',message='正在暂存新插件，保留本地配置和备份')
+            self.update(state='installing',message='正在替换插件并保留本地配置，完成后清理旧版本')
             shutil.copytree(self.root,stage,symlinks=True)
             try:previous=json.loads((self.root/STATE_FILE).read_text(encoding='utf-8')).get('managed',[])
             except (OSError,ValueError):previous=[]
@@ -204,7 +204,10 @@ class PluginUpdater:
                 backup.rename(self.root);moved=False
                 raise
             self.current=info
-            self.update(state='restart_required',message='更新完成，请重启ComfyUI后强制刷新浏览器',backup=str(backup),installed_commit=selected['commit'])
+            message='更新完成，旧版本已清理，请重启ComfyUI后强制刷新浏览器'
+            try:self._cleanup(backup)
+            except OSError:message='更新完成，但旧版本临时目录清理失败：'+str(backup)+'；请重启ComfyUI后删除该目录'
+            self.update(state='restart_required',message=message,backup=None,installed_commit=selected['commit'])
         except Exception as error:
             message=str(error)
             if moved and not self.root.exists():message+='；自动恢复未完成，请从备份目录恢复：'+str(backup)
