@@ -2,8 +2,19 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {defaultProject,readProject,compileRequest} from '../web/project.mjs';
 import {applyDirectorPreset} from '../web/director-recipe.mjs';
+import {syncFinishingResolution,finishingCanvas} from '../web/finishing.mjs';
+import {resolutionFor} from '../web/resolution.mjs';
+const linked=defaultProject();
+assert.equal(linked.finishing.megapixels,1);
+for(const [mp,aspect] of [[.4,'16:9'],[.5,'9:16'],[1,'1:1'],[2,'2.39:1']]){
+ Object.assign(linked.settings,resolutionFor(mp,aspect));syncFinishingResolution(linked,mp);
+ assert.equal(linked.finishing.megapixels,mp*2);
+ const canvas=finishingCanvas(linked.settings.width,linked.settings.height,linked.finishing);
+ assert.ok(Math.abs(canvas.width*canvas.height/1e6-mp*2)<.1);
+}
+linked.finishing.canvas={width:640,height:640};syncFinishingResolution(linked,2);assert.equal(linked.finishing.canvas,undefined);
 for(const initial of [defaultProject(),readProject({}),readProject({finishing:{defaultsVersion:1,refine:true}})]){
- assert.equal(initial.finishing.dualModel,true);assert.equal(initial.finishing.megapixels,2);assert.equal(initial.settings.sageAttention,true);
+ assert.equal(initial.finishing.dualModel,true);assert.equal(initial.finishing.megapixels,1);assert.equal(initial.settings.sageAttention,true);
  assert.equal(initial.settings.directorBaseModel,'minimax_h3_fl2va_pruned_int8_convrot.safetensors');
 }
 const disabled=defaultProject();disabled.settings.sageAttention=false;disabled.finishing.dualModel=false;

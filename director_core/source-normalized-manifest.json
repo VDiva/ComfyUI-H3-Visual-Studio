@@ -1,7 +1,6 @@
 {
   "director/__init__.py": "9262012a0b4e4139a99ef8ebecd597e207f8206207019cc52f721395ffa70cac",
   "director/audio_export.py": "96c3f1b3951d03b24e18d4146290b5a4dee71de7ce5db3859f686d22d34613f9",
-  "director/core_sampling.py": "4715f807c46157de8de796dd64c36815b68b5d655509d2a2feee3cc98ee7290a",
   "director/core_text_encode.py": "0aff4f364498a18ec77b80e9dc344ea8af5e742ab6221c0b85c680f8e3131274",
   "director/executor_core.py": "a4f2c9795cac48f3d93e5ad14dbde03fe4a0065285b4976c4074bc4b03016105",
   "director/external_groups.py": "19d99e527fad03941b525e2c7a70d6ad344e8a41201159bcea22588498250522",
@@ -26,7 +25,6 @@
   "director/prompt_enhance_media.py": "6576c5a10a22b61a5bf8c52f5a604e7f39f2e55e0f2c7e47ea38df754572bb25",
   "director/prompt_enhance_routes.py": "ee7b60a82946f9d83a4e42257b37bf9dd54a50dacd137ce992668fbc5882c2a2",
   "director/prompt_enhance_runtime.py": "26ac30a392c459844535acf26da1fd3b04354b6b2de422ab68b9b7dfd4113fa4",
-  "director/refine_sampling.py": "603b7566211d89e222b20f802c40e4078506e426e116041c8c985ff2fdb9a300",
   "director/segment_cache.py": "8cde494c0bcd04f3e8a44ec754c4772928098ba1abb9d1924815e68de494a724",
   "director/segment_continuity.py": "3c4838d82eb9ff4a0889f52ad63f9c89e23cf99da9b44c15a81f84f8cabfdbcd",
   "director/segment_loras.py": "4865703f1bb2b5fd926ebc6159512f8497f8bcfafca112a9078760e6e8d2e6c2",

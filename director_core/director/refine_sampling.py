@@ -1,5 +1,8 @@
 """Second-sample (refine) and optional pixel upscale for Director segments."""
 
+# Modified by H3 Visual Studio: forward actual per-step refinement progress,
+# mapped across passes, rather than reporting a synthetic halfway milestone.
+
 from __future__ import annotations
 
 import logging
@@ -1099,7 +1102,7 @@ def apply_segment_refine(
                 refine_seed,
             )
             if on_phase:
-                on_phase("refine", (i + 0.5) / n_passes)
+                on_phase("refine", i / n_passes)
             work = sample_single_stage(
                 model=refine_model,
                 positive=refine_positive,
@@ -1113,7 +1116,9 @@ def apply_segment_refine(
                 shift_video=shift_video,
                 shift_audio=shift_audio,
                 denoise=1.0,
-                on_phase=None,
+                on_phase=(lambda phase, value, pass_index=i: on_phase(
+                    phase, (pass_index + value) / n_passes
+                )) if on_phase else None,
                 on_step_preview=on_step_preview,
                 preview_every=-1,
                 phase_name="refine",

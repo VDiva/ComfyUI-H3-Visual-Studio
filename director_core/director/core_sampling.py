@@ -207,8 +207,10 @@ def sample_single_stage(
         )
         return _unpack_node_output(sampled)[0]
 
+    # Modified by H3 Visual Studio: report actual completed sampler steps,
+    # independently of whether preview generation is enabled.
     orig_sample = (
-        guider.sample if (on_step_preview is not None or on_step_state is not None) else None
+        guider.sample if (on_phase is not None or on_step_preview is not None or on_step_state is not None) else None
     )
     if orig_sample is not None:
         every = max(1, int(preview_every))
@@ -217,6 +219,7 @@ def sample_single_stage(
             inner_cb = kwargs.get("callback")
 
             def callback(step, x0, x, total_steps):
+                notify(phase_name, min(1.0, (int(step) + 1) / max(1, int(total_steps))))
                 if on_step_state is not None:
                     try:
                         on_step_state(int(step), int(total_steps), x0, x)

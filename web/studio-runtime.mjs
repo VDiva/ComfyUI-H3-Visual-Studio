@@ -1,26 +1,26 @@
-import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.6';
-import {mountProxyCore} from './proxy-core.mjs?v=0.15.6';
-import {backgroundBatch} from './background-batch.mjs?v=0.15.6';
-import {generationSummary} from './generation-summary.mjs?v=0.15.6';
-import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.6';
-import {openVideoCompare} from './video-compare.mjs?v=0.15.6';
-import {mountDependencies} from './dependencies.mjs?v=0.15.6';
-import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.6';
-import {mountSelfLift} from './selflift.mjs?v=0.15.6';
-import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.6';
-import {executionProgress} from './execution-progress.mjs?v=0.15.6';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.6';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.15.6';
-import {openFolderTemplate} from './folder-template.mjs?v=0.15.6';
-import {livePreview} from './live-preview.mjs?v=0.15.6';
-import {modelDownloader} from './model-download.mjs?v=0.15.6';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.6';
-import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.6';
+import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.8';
+import {mountProxyCore} from './proxy-core.mjs?v=0.15.8';
+import {backgroundBatch} from './background-batch.mjs?v=0.15.8';
+import {generationSummary} from './generation-summary.mjs?v=0.15.8';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.8';
+import {openVideoCompare} from './video-compare.mjs?v=0.15.8';
+import {mountDependencies} from './dependencies.mjs?v=0.15.8';
+import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.8';
+import {mountSelfLift} from './selflift.mjs?v=0.15.8';
+import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.8';
+import {executionProgress} from './execution-progress.mjs?v=0.15.8';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.8';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.15.8';
+import {openFolderTemplate} from './folder-template.mjs?v=0.15.8';
+import {livePreview} from './live-preview.mjs?v=0.15.8';
+import {modelDownloader} from './model-download.mjs?v=0.15.8';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.8';
+import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.8';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.6';
-import './folder-core.js?v=0.15.6';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.6';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.8';
+import './folder-core.js?v=0.15.8';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.8';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -52,7 +52,7 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.6</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.8</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组导演台API</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
@@ -98,7 +98,8 @@ function attach(node){
  const compareResult=document.createElement('button');compareResult.id='quality-results';compareResult.textContent='对比A/B结果';compareResult.disabled=true;root.querySelector('.runbar').append(compareResult);
  const stepStatus=document.createElement('div');stepStatus.className='status';stepStatus.style.cssText='white-space:pre-wrap;flex-shrink:0';stepStatus.textContent='当前步骤：等待任务';stepStatus.setAttribute('role','status');$('status').before(stepStatus);
  const previewStep=document.createElement('div');previewStep.style.cssText='white-space:pre-wrap;color:#8aefcf;font-weight:600;padding:8px 0';previewStep.textContent='当前步骤：等待任务';$('live-label').before(previewStep);
- const progressTracker=executionProgress({api,show:text=>{stepStatus.textContent='当前步骤：'+text;previewStep.textContent='当前步骤：'+text;}});
+ const stageBar=document.createElement('progress');stageBar.style.cssText='width:100%;height:14px;display:none';stageBar.setAttribute('aria-label','当前阶段实际进度');previewStep.after(stageBar);
+ const progressTracker=executionProgress({api,show:(text,detail)=>{stepStatus.textContent='当前步骤：'+text;previewStep.textContent='当前步骤：'+text;stageBar.style.display=detail?'block':'none';if(detail){stageBar.max=detail.max;stageBar.value=detail.value;stageBar.title=detail.label+'：'+(detail.value/detail.max*100).toFixed(1)+'%';}}});
  function setBusy(value){busy=value;$('add-page').disabled=value;$('delete-page').disabled=value||batchController.active||pluginUpdateBlocked();$('edit').disabled=value||batchController.active||pluginUpdateBlocked();for(const id of ['run','run-one'])$(id).disabled=value||batchController.active||pluginUpdateBlocked();$('resume').disabled=value;$('merge').disabled=value||batchController.active;compareButton.disabled=value||batchController.active||pluginUpdateBlocked();$('stop').disabled=!value&&!batchController.active;}
  function current(){return project.groups[selected];}
 

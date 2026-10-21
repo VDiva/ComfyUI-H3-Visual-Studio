@@ -12,13 +12,14 @@ assert b'Apache License' in license and b'Version 2.0' in license
 assert (root/'NOTICE').is_file() and (core/'UPSTREAM_README.md').is_file()
 manifest=json.loads((core/'source-manifest.json').read_text(encoding='utf-8-sig'))
 normalized=json.loads((core/'source-normalized-manifest.json').read_text(encoding='utf-8-sig'))
-assert set(normalized)==set(manifest)-{'director/refine_pack.py'}
+assert set(normalized)==set(manifest)-{'director/refine_pack.py','director/core_sampling.py','director/refine_sampling.py'}
 for name,digest in manifest.items():
  path=core/name
  assert path.is_file(),name
  if name in normalized:
   assert hashlib.sha256(path.read_bytes().replace(b'\r\n',b'\n')).hexdigest()==normalized[name],name
 assert 'Modified by H3 Visual Studio' in (core/'director/refine_pack.py').read_text(encoding='utf-8-sig')
+for name in ('core_sampling.py','refine_sampling.py'):assert 'Modified by H3 Visual Studio' in (core/'director'/name).read_text(encoding='utf-8-sig')
 for name in ['selflift.py','latent_upscale.py','director_latent_upscale.py','director_condition_resize.py','web/official-import.mjs','ffmpeg/ffmpeg','ffmpeg/ffmpeg.exe']:
  assert not (root/name).exists(),name
 for file in (root/'web').iterdir():

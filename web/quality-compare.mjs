@@ -1,5 +1,5 @@
-import {resolutionFor,MEGAPIXELS,ASPECTS} from './resolution.mjs?v=0.15.6';
-import {targetCanvas,finishingCanvas,finishingSettings} from './finishing.mjs?v=0.15.6';
+import {resolutionFor,MEGAPIXELS,ASPECTS} from './resolution.mjs?v=0.15.8';
+import {targetCanvas,finishingCanvas,finishingSettings} from './finishing.mjs?v=0.15.8';
 export function qualityVariants(project,group,{kind='resolution',a=0.4,b=0.6,target=1.2}={}){
  if(!group)throw Error('请先选择一个分段');
  if(project.selflift?.enabled)throw Error('画质对比请先关闭SelfLift，保持只改变一个参数');

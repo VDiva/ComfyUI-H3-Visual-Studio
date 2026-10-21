@@ -1,6 +1,6 @@
-import {openVideoCompare} from './video-compare.mjs?v=0.15.6';
-import {MEGAPIXELS} from './resolution.mjs?v=0.15.6';
-import {modelReport,assertModels,modelChoices} from './model-check.mjs?v=0.15.6';
+import {openVideoCompare} from './video-compare.mjs?v=0.15.8';
+import {MEGAPIXELS} from './resolution.mjs?v=0.15.8';
+import {modelReport,assertModels,modelChoices} from './model-check.mjs?v=0.15.8';
 export const FINISH_MEGAPIXELS=Array.from({length:40},(_,i)=>(i+1)/10);
 export const LATENT_MODEL='minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors';
 export const defaultFinishing=()=>({defaultsVersion:1,refine:true,steps:4,denoise:0.15,passes:1,upscale:'latent',megapixels:1,model:'RealESRGAN_x4.pth',latentModel:LATENT_MODEL,chunking:true});
@@ -24,8 +24,8 @@ export function syncFinishingResolution(project,sourceMP){
  const mp=sourceMP??MEGAPIXELS.reduce((a,b)=>Math.abs(b-project.settings.width*project.settings.height/1e6)<Math.abs(a-project.settings.width*project.settings.height/1e6)?b:a);
  if(!MEGAPIXELS.includes(mp))throw Error('一采目标须为0.1—2.0 MP');
  const next=Number((mp*2).toFixed(1));
- project.settings.megapixels=mp;if(s.megapixels===next)return false;
- project.finishing={...s,megapixels:next};return true;
+ project.settings.megapixels=mp;if(s.megapixels===next&&!s.canvas)return false;
+ project.finishing={...s,megapixels:next};delete project.finishing.canvas;return true;
 }
 export const isOriginalVideo=row=>/(?:^|[/\\])[^/\\]*_original(?:[/\\]|$)/.test((row.subfolder||'')+'/'+row.filename);
 export function existingUpscale(clip,model,megapixels){
