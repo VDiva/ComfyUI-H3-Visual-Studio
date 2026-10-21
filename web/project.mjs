@@ -1,8 +1,9 @@
-import {applyDirectorPreset} from './director-recipe.mjs?v=0.13.0';
-import {defaultSelfLift,selfLiftApi} from './selflift.mjs?v=0.13.0';
-import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.13.0';
-import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.13.0';
-import {defaultFinishing,finishApi,isOriginalVideo} from './finishing.mjs?v=0.13.0';
+import {applyDirectorPreset} from './director-recipe.mjs?v=0.14.1';
+import {directorCoreRequest} from './director-core.mjs?v=0.14.1';
+import {defaultSelfLift} from './selflift.mjs?v=0.14.1';
+import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.14.1';
+import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.14.1';
+import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.14.1';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];
@@ -116,7 +117,7 @@ export function compileRequest(base,project,group) {
   if(videoNodes.length!==1)throw Error('官方保存链路需要一个CreateVideo');
   const source=result[String(videoNodes[0].inputs.audio?.[0])];
   if(source?.class_type!=='VAEDecodeAudio')throw Error('最终音轨必须连接官方VAEDecodeAudio，禁止参考音频直接作为成片原声');
-  return {prompt:selfLiftApi(finishApi(result,{...project.finishing,sageAttention:!!project.settings.sageAttention},project.settings.width,project.settings.height),project),plan};
+  return {prompt:directorCoreRequest(result,{...project,settings:{...project.settings,...videoSettings}},plan,saveId),plan};
 }
 export function resultVideos(history) {
   const files=[];

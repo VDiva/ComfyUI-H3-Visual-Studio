@@ -2,6 +2,8 @@
 from pathlib import Path
 import importlib.util, importlib.metadata, sys, platform, subprocess, os, json, threading, concurrent.futures, tempfile, urllib.request, zipfile, io, shutil
 PACKAGES={
+ "opencv":{"label":"Director视频读取","module":"cv2","pip":["opencv-python-headless>=4.8"],"reason":"导演台内核视频解码"},
+ "scenedetect":{"label":"Director镜头分析","module":"scenedetect","pip":["scenedetect>=0.6.4,<0.8"],"reason":"导演台镜头分析"},
  "imageio_ffmpeg":{"label":"FFmpeg Python运行库","module":"imageio_ffmpeg","pip":["imageio-ffmpeg"],"reason":"FFmpeg备用执行文件"},
  "spandrel":{"label":"图像超分模型加载库","module":"spandrel","pip":["spandrel"],"reason":"RealESRGAN模型加载"},
  "safetensors":{"label":"Safetensors模型读取","module":"safetensors","pip":["safetensors"],"reason":"模型权重读取"},

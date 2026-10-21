@@ -2,9 +2,9 @@
 from pathlib import Path
 import time
 from collections import deque
-import urllib.error, urllib.parse, socket, errno, http.client
+import urllib.error, urllib.parse, socket, errno, http.client, ssl
 import re, json, threading, concurrent.futures, urllib.request, hashlib, os, shutil
-BACKEND_VERSION = "0.5.7"
+BACKEND_VERSION = "0.5.8"
 CATALOG_PATH = Path(__file__).parent / "model-catalog.json"
 DMAD_MODEL = {
     "key": "models/loras/dmad_minimax_h3_4step_full_critic_comfyui.safetensors",
@@ -30,6 +30,8 @@ def download_error(error, stage):
         return prefix+"云端网络连接失败："+str(error.reason)
     if isinstance(error,OSError) and error.errno==errno.ENOSPC:
         return prefix+"云端磁盘已满，请释放模型所在磁盘空间"
+    if isinstance(error,OSError) and error.errno==errno.EROFS:
+        return prefix+"模型目录或断点文件指向只读存储；请检查挂载及符号链接，切换下载源不能解决"
     if isinstance(error,PermissionError):
         return prefix+"云端目录没有写入权限，请检查模型目录挂载权限"
     if isinstance(error,OSError) and error.errno in {errno.EXDEV,errno.EOPNOTSUPP,errno.ENOSYS}:
@@ -63,7 +65,7 @@ def detect_proxy(candidates=None, connector=socket.create_connection, validate=N
         candidates += [("http://127.0.0.1:"+str(port),"本机HTTP/Mixed端口") for port in [7890,7897,7892,10809,8080]]
     if validate is None:
         def validate(address):
-            with proxy_opener(address)(urllib.request.Request("https://huggingface.co/api/models/Comfy-Org/z_image_turbo",method="HEAD"),timeout=6) as response:
+            with proxy_opener(address)(urllib.request.Request("https://huggingface.co/api/models/Comfy-Org/Qwen-Image-2.1",method="HEAD"),timeout=6) as response:
                 return getattr(response,"status",200)==200
     seen=set()
     for address,source in candidates:
@@ -82,12 +84,48 @@ def detect_proxy(candidates=None, connector=socket.create_connection, validate=N
 class Downloads:
     def __init__(self, directory, invalidate=lambda: None, opener=urllib.request.urlopen, sleeper=time.sleep):
         self.directory, self.invalidate, self.opener = directory, invalidate, opener
+        self.internal_opener=urllib.request.build_opener(urllib.request.ProxyHandler({})).open
         self.sleeper=sleeper
         self.proxy_address=""
         self.auto_proxy="";self.proxy_message="等待自动检测";self.proxy_checked=0
         self.auto_enabled=opener is urllib.request.urlopen
         self.jobs = {}; self.rates = {}; self.lock = threading.Lock()
         self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="h3-model")
+    @staticmethod
+    def source_failure(error):
+        if isinstance(error, urllib.error.HTTPError):
+            return error.code in {404, 408, 429, 500, 502, 503, 504}
+        if isinstance(error, urllib.error.URLError):
+            return True
+        return isinstance(error, (TimeoutError, ConnectionError, http.client.HTTPException)) or (
+            isinstance(error, OSError) and error.errno in {
+                errno.ECONNRESET, errno.ECONNREFUSED, errno.ETIMEDOUT,
+                errno.ENETUNREACH, errno.EHOSTUNREACH,
+            }) or isinstance(error, ssl.SSLError)
+
+    def open_source(self, request, key, timeout=60):
+        # Official requests retain the configured proxy. The cloud-only mirror
+        # must bypass all environment/system proxies and never receive HF_TOKEN.
+        parsed=urllib.parse.urlsplit(request.full_url)
+        if parsed.scheme != "https" or parsed.netloc != "huggingface.co":
+            return self.opener(request, timeout=timeout)
+        with self.lock:
+            internal=self.jobs[key].get("download_source")=="xiangongyun"
+        if not internal:
+            self.update(key, download_source="official")
+            try:
+                return self.opener(request, timeout=timeout)
+            except Exception as error:
+                if not self.source_failure(error):
+                    raise
+                self.update(key, download_source="xiangongyun",
+                            error="官方请求失败，尝试仙宫云内网线路")
+        url=urllib.parse.urlunsplit(("http", "hf.x-gpu.com", parsed.path, parsed.query, ""))
+        headers={k:v for k,v in request.header_items()
+                 if k.lower() not in {"authorization", "proxy-authorization", "cookie"}}
+        return self.internal_opener(urllib.request.Request(url, headers=headers,
+                                    method=request.get_method()), timeout=timeout)
+
     def configure_proxy(self, address):
         if not isinstance(address,str): raise ValueError("代理地址格式错误")
         address=address.strip()
@@ -147,13 +185,13 @@ class Downloads:
             headers={"User-Agent":"H3-Visual-Studio"}
             token=os.environ.get("HF_TOKEN")
             if token: headers["Authorization"]="Bearer "+token
-            self.update(key,state="connecting")
+            self.update(key,state="connecting",download_source="official")
             stage="自动检测下载代理"
             self.auto_detect_proxy()
             # Resolve exact repository metadata in the cloud, where download happens.
             repo, filepath = model["url"].split("https://huggingface.co/",1)[1].split("/resolve/main/",1)
             stage="获取模型信息"
-            with self.opener(urllib.request.Request("https://huggingface.co/api/models/"+repo+"?blobs=true",headers=headers),timeout=60) as meta:
+            with self.open_source(urllib.request.Request("https://huggingface.co/api/models/"+repo+"?blobs=true",headers=headers),key,timeout=60) as meta:
                 metadata=json.load(meta)
             entry=next((s for s in metadata.get("siblings",[]) if s.get("rfilename")==filepath),{})
             lfs=entry.get("lfs",{});expected=lfs.get("sha256");size=entry.get("size") or lfs.get("size")
@@ -176,7 +214,7 @@ class Downloads:
                 try:
                     request_headers=dict(headers)
                     if offset: request_headers["Range"]="bytes="+str(offset)+"-"
-                    with self.opener(urllib.request.Request(url,headers=request_headers),timeout=60) as response:
+                    with self.open_source(urllib.request.Request(url,headers=request_headers),key,timeout=60) as response:
                         status=getattr(response,"status",200)
                         if status==206:
                             content_range=response.headers.get("Content-Range","")
@@ -201,7 +239,8 @@ class Downloads:
                     break
                 except (OSError,urllib.error.URLError,http.client.HTTPException) as error:
                     if isinstance(error,urllib.error.HTTPError) and error.code not in {408,429,500,502,503,504}: raise
-                    if isinstance(error,OSError) and error.errno in {errno.ENOSPC,errno.EACCES}: raise
+                    if isinstance(error,OSError) and error.errno in {errno.ENOSPC,errno.EACCES,errno.EROFS,errno.EPERM}: raise
+                    if self.source_failure(error): self.update(key,download_source="xiangongyun")
                     if attempt==4: raise ConnectionError("自动重试4次仍失败；已保留断点，点击重试可继续。"+str(error)) from error
                     self.update(key,state="retrying",attempt=attempt,error=download_error(error,stage))
                     self.sleeper(min(2**attempt,8))

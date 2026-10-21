@@ -19,3 +19,15 @@ with patch.object(m,'os',types.SimpleNamespace(name='posix',X_OK=1,access=Mock(r
  try:m.ensure_executable(file);raise AssertionError('permission ignored')
  except ValueError as e:assert '只读' in str(e)
 print('PASS Linux execute-bit repair, existing permission and Windows skip, read-only/noexec errors')
+
+import sys,tempfile
+with patch.object(m.shutil,'which',return_value='system-ffmpeg'):
+ assert m.ffmpeg_path()=='system-ffmpeg'
+with tempfile.TemporaryDirectory() as temp:
+ candidate=Path(temp)/'ffmpeg';candidate.write_bytes(b'test')
+ with patch.object(m.shutil,'which',return_value=None),patch.dict(sys.modules,{'imageio_ffmpeg':types.SimpleNamespace(get_ffmpeg_exe=lambda:str(candidate))}):
+  assert m.ffmpeg_path()==str(candidate)
+with patch.object(m.shutil,'which',return_value=None),patch.dict(sys.modules,{'imageio_ffmpeg':None}):
+ try:m.ffmpeg_path();raise AssertionError('missing FFmpeg accepted')
+ except ValueError as error:assert 'imageio-ffmpeg' in str(error)
+print('PASS system/imageio FFmpeg resolution and actionable missing-dependency error')

@@ -1,4 +1,4 @@
-"""Visual project metadata only. Sampling is performed by official ComfyUI nodes."""
+"""Visual project metadata only. Video execution uses the bundled Director runtime."""
 import json
 video_processing_jobs = None
 
@@ -15,20 +15,19 @@ class H3VisualProject:
     RETURN_NAMES = ("project_json",)
     FUNCTION = "read_project"
     CATEGORY = "MiniMax H3/Visual Studio"
-    DESCRIPTION = "Public media and shot editor. Use its panel to queue official MiniMax H3 requests."
+    DESCRIPTION = "Public media and shot editor. Use its panel to queue bundled Director requests."
     def read_project(self, project_json):
         value = json.loads(project_json)
         if not isinstance(value, dict):
             raise ValueError("Project JSON must be an object")
         return (project_json,)
 
-from .frame_upscale import H3FrameUpscale,H3PreserveImages,H3PreserveLatent
-NODE_CLASS_MAPPINGS = {"H3VisualProject": H3VisualProject,"H3FrameUpscale":H3FrameUpscale,"H3PreserveImages":H3PreserveImages,"H3PreserveLatent":H3PreserveLatent}
-NODE_DISPLAY_NAME_MAPPINGS = {"H3VisualProject": "H3 可视化工作室（官方流程）","H3FrameUpscale":"H3 逐帧模型超分"}
+from .frame_upscale import H3FrameUpscale
+NODE_CLASS_MAPPINGS = {"H3VisualProject": H3VisualProject,"H3FrameUpscale":H3FrameUpscale}
+NODE_DISPLAY_NAME_MAPPINGS = {"H3VisualProject": "H3 可视化工作室（Director内核）","H3FrameUpscale":"H3 逐帧模型超分"}
 WEB_DIRECTORY = "./web"
-from .latent_upscale import H3DirectorLatentUpscale
-NODE_CLASS_MAPPINGS['H3DirectorLatentUpscale']=H3DirectorLatentUpscale
-NODE_DISPLAY_NAME_MAPPINGS['H3DirectorLatentUpscale']='H3 Director 3D latent放大'
+from .director_bridge import NODE_CLASS_MAPPINGS as DIRECTOR_NODE_CLASS_MAPPINGS
+NODE_CLASS_MAPPINGS.update(DIRECTOR_NODE_CLASS_MAPPINGS)
 
 def register_video_processing():
     global video_processing_jobs
@@ -142,9 +141,6 @@ if PromptServer is not None:
         except (ValueError,TypeError,AttributeError) as error:
             return web.json_response({"error":str(error)},status=400)
 
-from .selflift import H3SelfLiftSampler
-NODE_CLASS_MAPPINGS["H3SelfLiftSampler"]=H3SelfLiftSampler
-NODE_DISPLAY_NAME_MAPPINGS["H3SelfLiftSampler"]="H3 SelfLift 渐进一采"
 
 if PromptServer is not None:
     from .dependencies import DependencyManager

@@ -59,7 +59,7 @@ with tempfile.TemporaryDirectory() as temp:
   if '/api/models/' in request.full_url:return opener(request,timeout)
   count[0]+=1
   return io.BytesIO(content[:5] if count[0]==1 else content)
- manager=m.Downloads(lambda category:temp,opener=interrupted,sleeper=lambda _:None);manager.jobs[model['key']]={};manager.run(model)
+ manager=m.Downloads(lambda category:temp,opener=interrupted,sleeper=lambda _:None);manager.internal_opener=interrupted;manager.jobs[model['key']]={};manager.run(model)
  assert manager.status()[model['key']]['state']=='done';assert count[0]==2
  assert (Path(temp)/model['name']).read_bytes()==content
  manager.pool.shutdown()

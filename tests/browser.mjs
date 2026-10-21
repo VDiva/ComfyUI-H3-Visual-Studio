@@ -7,9 +7,9 @@ import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.H3_PLAYWRIGHT_MODULE || 'C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const root=fileURLToPath(new URL('../',import.meta.url));
-const workflow=JSON.parse(await fs.readFile(path.join(root,'examples/官方可视化工作流.json'),'utf8'));
+const workflow=JSON.parse(await fs.readFile(path.join(root,'tests/.fixtures/官方可视化工作流.json'),'utf8'));
 const catalog=JSON.parse(await fs.readFile(path.join(root,'model-catalog.json'),'utf8'));let downloadedKeys=[],breakStudio=false;
-const base=JSON.parse(await fs.readFile(path.join(root,'examples/官方采样API基线.json'),'utf8'));
+const base=JSON.parse(await fs.readFile(path.join(root,'tests/.fixtures/官方采样API基线.json'),'utf8'));
 const fixture=path.join(root,'tests/.fixtures/1_26');
 let png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB2cAAAAASUVORK5CYII=','base64');
 try{png=await fs.readFile(new URL('../../../../01/1_26/1_26_01/公共参考图/@图片1.png',import.meta.url));}catch{}

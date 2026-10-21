@@ -1,6 +1,6 @@
 """Disk-based FFmpeg concat. No torch or GPU decoding."""
 from pathlib import Path
-import os, stat, subprocess, tempfile, uuid, threading, re
+import os, stat, subprocess, tempfile, uuid, threading, re, shutil
 _LOCK = threading.Lock()
 
 def ensure_executable(candidate):
@@ -18,7 +18,17 @@ def ffmpeg_path():
     base = Path(__file__).resolve().parent / "ffmpeg"
     candidate = base / ("ffmpeg.exe" if os.name == "nt" else "ffmpeg")
     if not candidate.is_file():
-        raise ValueError(f"缺少内置FFmpeg：{candidate}；Linux云端请放Linux版本")
+        system = shutil.which("ffmpeg")
+        if system:
+            return system
+        try:
+            import imageio_ffmpeg
+            resolved = imageio_ffmpeg.get_ffmpeg_exe()
+            if Path(resolved).is_file():
+                return resolved
+        except (ImportError, RuntimeError, OSError):
+            pass
+        raise ValueError("缺少FFmpeg，请在依赖页安装imageio-ffmpeg，或在服务器安装FFmpeg")
     if not candidate.resolve().is_relative_to(base.resolve()):
         raise ValueError("内置FFmpeg路径越界，未修改权限")
     ensure_executable(candidate)

@@ -27,15 +27,6 @@
     "sha256": null
   },
   {
-    "key": "models/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors",
-    "category": "diffusion_models",
-    "name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
-    "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors",
-    "source": "https://huggingface.co/Comfy-Org/MiniMax-H3",
-    "size": null,
-    "sha256": null
-  },
-  {
     "key": "models/vae/minimax_h3_video_vae_fp16.safetensors",
     "category": "vae",
     "name": "minimax_h3_video_vae_fp16.safetensors",
@@ -77,33 +68,6 @@
     "name": "minimax_h3_hybrid_fl2va_ref2va_b25-49-int8.safetensors",
     "url": "https://huggingface.co/steveo23/Minimax-H3-fl2va-ref2va-hybrid-models/resolve/main/minimax_h3_hybrid_fl2va_ref2va_b25-49-int8.safetensors",
     "source": "https://huggingface.co/steveo23/Minimax-H3-fl2va-ref2va-hybrid-models",
-    "size": null,
-    "sha256": null
-  },
-  {
-    "key": "models/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
-    "category": "diffusion_models",
-    "name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
-    "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
-    "source": "https://huggingface.co/Comfy-Org/MiniMax-H3",
-    "size": null,
-    "sha256": null
-  },
-  {
-    "key": "models/diffusion_models/minimax_h3_ref2va_pruned_w4a8_mixed.safetensors",
-    "category": "diffusion_models",
-    "name": "minimax_h3_ref2va_pruned_w4a8_mixed.safetensors",
-    "url": "https://huggingface.co/Kijai/MiniMax-H3-experimental/resolve/main/minimax_h3_ref2va_pruned_w4a8_mixed.safetensors",
-    "source": "https://huggingface.co/Kijai/MiniMax-H3-experimental",
-    "size": null,
-    "sha256": null
-  },
-  {
-    "key": "models/loras/minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors",
-    "category": "loras",
-    "name": "minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors",
-    "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/loras/minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors",
-    "source": "https://huggingface.co/Comfy-Org/MiniMax-H3",
     "size": null,
     "sha256": null
   },

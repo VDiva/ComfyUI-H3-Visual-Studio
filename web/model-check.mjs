@@ -1,4 +1,4 @@
-const loaders={H3SelfLiftSampler:['model_name','latent_upscale_models'],H3DirectorLatentUpscale:['model_name','latent_upscale_models'],UNETLoader:['unet_name','diffusion_models'],CLIPLoader:['clip_name','text_encoders'],DualCLIPLoader:['clip_name1','text_encoders','clip_name2'],VAELoader:['vae_name','vae'],LoraLoaderModelOnly:['lora_name','loras'],LoraLoader:['lora_name','loras'],UpscaleModelLoader:['model_name','upscale_models']};
+const loaders={UNETLoader:['unet_name','diffusion_models'],CLIPLoader:['clip_name','text_encoders'],DualCLIPLoader:['clip_name1','text_encoders','clip_name2'],VAELoader:['vae_name','vae'],LoraLoaderModelOnly:['lora_name','loras'],LoraLoader:['lora_name','loras'],UpscaleModelLoader:['model_name','upscale_models']};
 export function modelChoices(definition,field){
  const value=definition?.input?.required?.[field]??definition?.input?.optional?.[field];
  if(Array.isArray(value?.[0]))return value[0];
@@ -11,7 +11,7 @@ export function modelReport(info,prompts){
  for(const prompt of prompts)for(const node of Object.values(prompt||{})){
   if(node.class_type==='H3VisualProject')continue;
   const definition=info[node.class_type];if(!definition)nodes.add(node.class_type);
-  const loader=loaders[node.class_type];if(!loader)continue;
+  const loader=['H3StudioDirectorRefine','H3StudioDirectorSelfLift'].includes(node.class_type)?['latent_upscale_model','latent_upscale_models']:loaders[node.class_type];if(!loader)continue;
   for(const field of [loader[0],loader[2]].filter(Boolean)){
    const file=node.inputs?.[field];if(typeof file!=='string'||!file)continue;
    const label=`models/${loader[1]}/${file}`;checked.add(label);

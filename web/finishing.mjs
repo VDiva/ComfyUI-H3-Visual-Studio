@@ -1,7 +1,6 @@
-import {openVideoCompare} from './video-compare.mjs?v=0.13.0';
-import {attentionModel} from './director-recipe.mjs?v=0.13.0';
-import {MEGAPIXELS} from './resolution.mjs?v=0.13.0';
-import {modelReport,assertModels,modelChoices} from './model-check.mjs?v=0.13.0';
+import {openVideoCompare} from './video-compare.mjs?v=0.14.1';
+import {MEGAPIXELS} from './resolution.mjs?v=0.14.1';
+import {modelReport,assertModels,modelChoices} from './model-check.mjs?v=0.14.1';
 export const FINISH_MEGAPIXELS=Array.from({length:40},(_,i)=>(i+1)/10);
 export const LATENT_MODEL='minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors';
 export const defaultFinishing=()=>({defaultsVersion:1,refine:true,steps:4,denoise:0.15,passes:1,upscale:'latent',megapixels:1,model:'RealESRGAN_x4.pth',latentModel:LATENT_MODEL,chunking:true});
@@ -28,70 +27,6 @@ export function syncFinishingResolution(project,sourceMP){
  project.settings.megapixels=mp;if(s.megapixels===next)return false;
  project.finishing={...s,megapixels:next};return true;
 }
-// Independent stock-node composition inspired by Director's separation of refine and upscale.
-// Latent mode refines after resizing; pixel upscale modes refine before resizing. Audio remains from the first pass.
-export function finishApi(prompt,raw,width,height){
- const s=finishingSettings(raw);if(!s.refine&&s.upscale==='off')return prompt;
- const entries=Object.entries(prompt),find=type=>{const found=entries.filter(([,n])=>n.class_type===type);if(found.length!==1)throw Error('精修需要唯一节点 '+type);return found[0];};
- const [,create]=find('CreateVideo'),[,save]=find('SaveVideo'),[,decode]=find('VAEDecode');
- const originalImages=structuredClone(create.inputs.images),audio=structuredClone(create.inputs.audio);
- let next=Math.max(0,...Object.keys(prompt).map(Number).filter(Number.isFinite));const add=(class_type,inputs)=>{const id=String(++next);prompt[id]={class_type,inputs};return [id,0];};
- const originalVideo=add('CreateVideo',{...structuredClone(create.inputs),images:originalImages,audio});
- const retained=add('SaveVideo',{...structuredClone(save.inputs),video:originalVideo,filename_prefix:save.inputs.filename_prefix+'_original/clip'});
- if(s.upscale==='latent'){
-  const target=finishingCanvas(width,height,s);
-  if(target.width<width||target.height<height)throw Error('放大目标小于原始尺寸，请提高目标MP');
-  const [sampleId,sample]=find('SamplerCustomAdvanced');
-  if(String(decode.inputs.samples?.[0])!==sampleId)throw Error('H3 latent放大需要官方采样直接接解码');
-  const guider=prompt[String(sample.inputs.guider?.[0])],scheduler=prompt[String(sample.inputs.sigmas?.[0])];
-  if(guider?.class_type!=='BasicGuider'||scheduler?.class_type!=='BasicScheduler')throw Error('Director方式需要BasicGuider与BasicScheduler');
-  let latent=add('H3PreserveLatent',{samples:[sampleId,0],saved_video:retained});
-  const lifted=add('H3DirectorLatentUpscale',{samples:latent,positive:structuredClone(guider.inputs.conditioning),model_name:s.latentModel,width:target.width,height:target.height,source_width:width,source_height:height,enable_chunking:!!s.chunking});
-  latent=lifted;
-  if(s.refine){
-   let refineModel=structuredClone(guider.inputs.model);
-   if(s.dualModel){
-    if(!s.refineModel||!s.refineLora)throw Error('独立二采缺少模型或LoRA配置');
-    const base=add('UNETLoader',{unet_name:s.refineModel,weight_dtype:'default'});
-    let patched=add('LoraLoaderModelOnly',{model:base,lora_name:s.refineLora,strength_model:1});
-    patched=attentionModel(add,patched,!!s.sageAttention);
-    refineModel=add('MiniMaxH3SigmaShift',{model:patched,shift_video:12,shift_audio:3});
-   }
-   const guide=add('BasicGuider',{model:refineModel,conditioning:[lifted[0],1]});
-   for(let i=0;i<s.passes;i++){
-    const sigmas=add('BasicScheduler',{model:refineModel,scheduler:s.scheduler&&s.scheduler!=='inherit'?s.scheduler:scheduler.inputs.scheduler,steps:s.steps,denoise:s.denoise});
-    const sampler=add('KSamplerSelect',{sampler_name:'euler'});
-    latent=add('SamplerCustomAdvanced',{...structuredClone(sample.inputs),guider:guide,sampler,latent_image:latent,sigmas});
-   }
-  }
-  create.inputs.images=add('VAEDecode',{...structuredClone(decode.inputs),samples:latent});
-  return prompt;
- }
- if(s.refine){
-  const [sampleId,sample]=find('SamplerCustomAdvanced');
-  if(String(decode.inputs.samples?.[0])!==sampleId)throw Error('精修只支持官方H3采样直接接视频解码的工作流');
-  const scheduler=prompt[String(sample.inputs.sigmas?.[0])];
-  if(scheduler?.class_type!=='BasicScheduler')throw Error('精修需要BasicScheduler提供模型');
-  let latent=add('H3PreserveLatent',{samples:[sampleId,0],saved_video:retained});
-  for(let i=0;i<s.passes;i++){
-   const sigmas=add('BasicScheduler',{model:structuredClone(scheduler.inputs.model),scheduler:scheduler.inputs.scheduler,steps:s.steps,denoise:s.denoise});
-   latent=add('SamplerCustomAdvanced',{...structuredClone(sample.inputs),latent_image:latent,sigmas});
-  }
-  // Use a separate decode, so the original video remains genuinely pre-refine.
-  create.inputs.images=add('VAEDecode',{...structuredClone(decode.inputs),samples:latent});
- }
- if(!s.refine)create.inputs.images=add('H3PreserveImages',{images:originalImages,saved_video:retained});
- if(s.upscale!=='off'){
-  const target=finishingCanvas(width,height,s);
-  if(target.width<width||target.height<height)throw Error('放大目标小于原始尺寸，请提高目标MP或关闭放大');
-  if(s.upscale==='model'){
-   const model=add('UpscaleModelLoader',{model_name:s.model});
-   create.inputs.images=add('H3FrameUpscale',{images:create.inputs.images,upscale_model:model,width:target.width,height:target.height});
-  }else create.inputs.images=add('ImageScale',{image:create.inputs.images,upscale_method:'lanczos',width:target.width,height:target.height,crop:'disabled'});
- }
- if(JSON.stringify(create.inputs.audio)!==JSON.stringify(audio))throw Error('精修不得更换原声音轨');
- return prompt;
-}
 export const isOriginalVideo=row=>/(?:^|[/\\])[^/\\]*_original(?:[/\\]|$)/.test((row.subfolder||'')+'/'+row.filename);
 export function existingUpscale(clip,model,megapixels){
  if(!clip||clip.type!=='output'||!model||!MEGAPIXELS.includes(megapixels))throw Error('请选择output成片、超分模型和目标MP');
@@ -107,7 +42,7 @@ export function mountFinishing({container,api,getProject,getGroup,persist,previe
  for(const id of ['finish-mp','post-mp'])for(const n of (id==='finish-mp'?FINISH_MEGAPIXELS:MEGAPIXELS)){const o=doc.createElement('option');o.value=n;o.textContent=n.toFixed(1);$(id).append(o);}$('post-mp').value='1';
  const bindings={refine:'finish-refine',steps:'finish-steps',denoise:'finish-denoise',passes:'finish-passes',upscale:'finish-upscale',megapixels:'finish-mp',model:'finish-model',latentModel:'finish-latent-model',chunking:'finish-chunking'};
  for(const [key,id] of Object.entries(bindings))$(id).onchange=()=>{const p=getProject();p.finishing={...defaultFinishing(),...p.finishing,[key]:['refine','chunking'].includes(key)?$(id).checked:['steps','denoise','passes','megapixels'].includes(key)?Number($(id).value):$(id).value};if(key==='upscale'&&p.finishing.upscale!=='off'){p.selflift={...p.selflift,enabled:false};syncFinishingResolution(p,p.settings.megapixels);}persist();sync();onSettingsChanged();};
- async function models(){try{for(const [type,field,id] of [['UpscaleModelLoader','model_name','finish-model'],['H3DirectorLatentUpscale','model_name','finish-latent-model']]){const r=await api.fetchApi('/object_info/'+type);if(!r.ok)throw Error('无法读取'+type+'模型列表，请更新完整插件并重启');const data=await r.json(),choices=modelChoices(data[type],field);if(!Array.isArray(choices))throw Error('缺少'+type+'接口，请更新插件和ComfyUI');$(id).replaceChildren();const blank=doc.createElement('option');blank.value='';blank.textContent=choices.length?'请选择模型':'未安装，请点击下载超分模型';$(id).append(blank);for(const v of choices.filter(v=>!v.startsWith('('))){const o=doc.createElement('option');o.value=v;o.textContent=v;$(id).append(o);}}const s={...defaultFinishing(),...getProject().finishing};for(const [key,id] of [['model','finish-model'],['latentModel','finish-latent-model']])if(Array.from($(id).options).some(o=>o.value===s[key]))$(id).value=s[key];}catch(e){log(e.message);}}
+ async function models(){try{for(const [type,field,id] of [['UpscaleModelLoader','model_name','finish-model'],['H3StudioDirectorRefine','latent_upscale_model','finish-latent-model']]){const r=await api.fetchApi('/object_info/'+type);if(!r.ok)throw Error('无法读取'+type+'模型列表，请更新完整插件并重启');const data=await r.json(),choices=modelChoices(data[type],field);if(!Array.isArray(choices))throw Error('缺少'+type+'接口，请更新插件和ComfyUI');$(id).replaceChildren();const blank=doc.createElement('option');blank.value='';blank.textContent=choices.length?'请选择模型':'未安装，请点击下载超分模型';$(id).append(blank);for(const v of choices.filter(v=>!v.startsWith('('))){const o=doc.createElement('option');o.value=v;o.textContent=v;$(id).append(o);}}const s={...defaultFinishing(),...getProject().finishing};for(const [key,id] of [['model','finish-model'],['latentModel','finish-latent-model']])if(Array.from($(id).options).some(o=>o.value===s[key]))$(id).value=s[key];}catch(e){log(e.message);}}
  $('compare-original').onclick=()=>{try{const g=getGroup();openVideoCompare({root:container,left:g?.job?.originalVideos?.[0],right:g?.job?.videos?.[0],view});}catch(e){log(e.message);}};
  $('finish-model-refresh').onclick=models;
  $('finish-director').onclick=()=>{const p=getProject();p.selflift={...p.selflift,enabled:false};p.finishing={...defaultFinishing(),...p.finishing,upscale:'latent',refine:true,latentModel:LATENT_MODEL,steps:4};syncFinishingResolution(p,p.settings.megapixels);persist();sync();onSettingsChanged();log('已启用Director方式：H3 3D latent放大 → 目标尺寸4步二采。首次请下载H3 latent模型。');};

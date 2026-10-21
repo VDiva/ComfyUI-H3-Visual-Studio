@@ -22,5 +22,7 @@ send('progress',{prompt_id:'fast',node:'6',value:1,max:4});assert.match(text,/�
 send('executing',{node:'5'});assert.match(text,/解码图像帧/);
 late.dispose();
 console.log('PASS stage names, early execution replay, progress recovery, legacy events, isolation and cleanup');
+const core=executionProgress({api,show:value=>text=value});core.watch('director',{'42':{class_type:'H3StudioDirector'}});
+send('executing',{prompt_id:'director',node:'42'});send('minimax_director_progress',{node_id:'42',phase_label:'精修采样',phase_value:1,phase_max:4});assert.match(text,/导演台.*精修采样.*25%/);const coreText=text;send('minimax_director_progress',{node_id:'99',phase_label:'wrong'});assert.equal(text,coreText);core.dispose();
 
 const polled=executionProgress({api,show:value=>text=value});polled.syncQueue('poll',{'1':{class_type:'UNETLoader'}},'分段1',true);assert.match(text,/排队/);polled.syncQueue('poll',{'1':{class_type:'UNETLoader'}},'分段1',false);assert.match(text,/服务器已开始执行/);assert.doesNotMatch(text,/排队/);send('executing',{prompt_id:'poll',node:'1'});assert.match(text,/加载视频模型/);polled.syncQueue('poll',{'1':{class_type:'UNETLoader'}},'分段1',false);assert.match(text,/加载视频模型/);polled.dispose();console.log('PASS queue polling corrects queued-to-running status without overwriting live node progress');

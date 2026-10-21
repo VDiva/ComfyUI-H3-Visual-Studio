@@ -9,3 +9,9 @@ p.video('/clip.mp4','done');assert.equal(video.src,'/clip.mp4');assert.equal(ima
 p.image('/person.png','image done');assert.equal(image.src,'/person.png');assert.equal(video.hidden,true);
 event('executing',{prompt_id:'other'});event('b_preview',new Blob(['y']));assert.equal(image.src,'/person.png');p.dispose();
 console.log('PASS live frame ownership, progress, video/image results, unrelated task exclusion and cleanup');
+const director=livePreview({api,image,video,label,owns:id=>id==='ours'});
+event('executing',{prompt_id:'ours',node:'42'});
+event('minimax_director_preview',{node_id:'99',image_b64:'wrong'});assert.equal(image.src,'/person.png');
+event('minimax_director_preview',{node_id:'42',image_b64:'test',mime:'image/webp',step:2,total_steps:8});assert.equal(image.src,'data:image/webp;base64,test');assert.match(label.textContent,/2\/8/);
+director.dispose();
+console.log('PASS Director preview routing and node ownership');

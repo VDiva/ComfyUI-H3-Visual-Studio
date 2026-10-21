@@ -1,7 +1,7 @@
 from pathlib import Path
 import json,importlib.util,sys
 root=Path(__file__).resolve().parents[1]
-data=json.loads((root/"examples/官方可视化工作流.json").read_text(encoding="utf-8"))
+data=json.loads((root/"tests/.fixtures/官方可视化工作流.json").read_text(encoding="utf-8"))
 nodes={n["id"]:n for n in data["nodes"]}
 assert not any("Director" in n["type"] or "KJ" in n["type"] for n in nodes.values())
 assert len([n for n in nodes.values() if n["type"]=="H3VisualProject"])==1

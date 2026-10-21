@@ -1,26 +1,25 @@
-import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.13.0';
-import {backgroundBatch} from './background-batch.mjs?v=0.13.0';
-import {generationSummary} from './generation-summary.mjs?v=0.13.0';
-import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.13.0';
-import {openVideoCompare} from './video-compare.mjs?v=0.13.0';
-import {mountDependencies} from './dependencies.mjs?v=0.13.0';
-import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.13.0';
-import {mountSelfLift,selfLiftApi} from './selflift.mjs?v=0.13.0';
-import {mountFinishing,finishApi,syncFinishingResolution} from './finishing.mjs?v=0.13.0';
-import {executionProgress} from './execution-progress.mjs?v=0.13.0';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.13.0';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.13.0';
-import {openFolderTemplate} from './folder-template.mjs?v=0.13.0';
-import {livePreview} from './live-preview.mjs?v=0.13.0';
-import {modelDownloader} from './model-download.mjs?v=0.13.0';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.13.0';
-import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.13.0';
+import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.14.1';
+import {backgroundBatch} from './background-batch.mjs?v=0.14.1';
+import {generationSummary} from './generation-summary.mjs?v=0.14.1';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.14.1';
+import {openVideoCompare} from './video-compare.mjs?v=0.14.1';
+import {mountDependencies} from './dependencies.mjs?v=0.14.1';
+import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.14.1';
+import {mountSelfLift} from './selflift.mjs?v=0.14.1';
+import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.14.1';
+import {executionProgress} from './execution-progress.mjs?v=0.14.1';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.14.1';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.14.1';
+import {openFolderTemplate} from './folder-template.mjs?v=0.14.1';
+import {livePreview} from './live-preview.mjs?v=0.14.1';
+import {modelDownloader} from './model-download.mjs?v=0.14.1';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.14.1';
+import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.14.1';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.13.0';
-import './folder-core.js?v=0.13.0';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.13.0';
-import {buildOfficialImport,verifyOfficialImport} from './official-import.mjs?v=0.13.0';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.14.1';
+import './folder-core.js?v=0.14.1';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.14.1';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -46,9 +45,9 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.13.0</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.14.1</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
- <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组官方工作流</button></div>
+ <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组导演台API</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
  <div class="row"><span class="title">工作模式</span><select id="mode"><option value="reference">参考素材 → 生视频</option><option value="auto_character">自动生成人物参考图 → 生视频</option></select><span class="muted">模式按页面保存</span></div>
  <div id="character-panel" class="library" hidden><div class="row"><span class="title grow">人物参考图 · Qwen-Image-2.1 Turbo</span><button id="extract-characters">从提示词识别人物</button><button id="add-character">添加人物</button><button id="generate-characters">只生成/更新人物图</button></div><p class="muted">先提取人物外貌设定，可编辑后生图；同一页按人物复用，不为每个素材组重复生成。缺少明确人物标签时请补充设定。</p><details><summary>生图模型与风格设置（首次需下载模型）</summary><div id="image-settings" class="row"></div><textarea id="image-style" style="min-height:65px" placeholder="统一人物参考图画风"></textarea><a href="https://huggingface.co/Comfy-Org/Qwen-Image-2.1" target="_blank" rel="noopener">官方模型下载</a></details><div id="characters"></div></div>
@@ -59,7 +58,7 @@ function attach(node){
  <div class="work"><div id="groups" class="groups"></div><div class="editor"><div class="row"><span id="group-title" class="title grow"></span><label>请求秒数 <input id="seconds" type="number" min="0.2" max="20.7" step="0.1"></label><button id="up">↑</button><button id="down">↓</button><button id="remove">删除本组</button></div><textarea id="prompt" placeholder="本组提示词。只说明确标注的台词；图片编号指向上方公共素材库。"></textarea><div id="binding" class="muted"></div><div id="result"></div></div></div>
  </fieldset></main><aside class="live-pane"><div class="title">实时预览 / 最新结果</div><p id="live-label" class="muted">等待任务。采样预览需云端开启预览；完成后自动显示图片或视频。</p><img id="live-image" hidden><video id="live-video" controls playsinline preload="metadata" hidden></video></aside></div>
  <div class="runbar"><button id="run-one" class="primary">生成当前组</button><button id="run" class="primary">按顺序生成勾选组</button><label><input id="auto-merge" type="checkbox">批量完成后自动合并</label><button id="merge">合并勾选组</button><button id="stop" class="danger" disabled>停止后续提交</button><button id="resume">查询已提交任务</button><span class="muted">后台批次提交成功后可关闭页面（人物图准备阶段需保持打开）</span></div>
- <div id="model-downloads" style="white-space:pre-wrap;overflow-wrap:anywhere"></div><div id="status" class="status" style="white-space:pre-wrap;overflow-wrap:anywhere">先导入目录并建页，或添加分组。采样和音视频保存由官方节点完成。</div>
+ <div id="model-downloads" style="white-space:pre-wrap;overflow-wrap:anywhere"></div><div id="status" class="status" style="white-space:pre-wrap;overflow-wrap:anywhere">先导入目录并建页，或添加分组。视频由导演台内核执行，成片由ComfyUI保存。</div>
  <input id="folder-input" class="file" type="file" webkitdirectory multiple><input id="json-input" class="file" type="file" accept="application/json,.json"><input id="media-input" class="file" type="file" multiple>
  </div>`;
  const $=id=>root.querySelector('#'+id);
@@ -262,7 +261,7 @@ function attach(node){
  const downloader=modelDownloader({api,container:$('model-downloads'),log,recheck:async()=>{try{showPanel('models');await checkAllModels(await app.graphToPrompt());}catch(error){log(error.message);}}});
  async function checkAllModels(graph,{imageOnly=false,install=false}={}){
   const response=await api.fetchApi('/object_info');if(!response.ok)throw Error('无法获取云端模型清单，未提交任务');
-  const prompts=imageOnly?[]:[selfLiftApi(finishApi(accelerateApi(graph.output,project.settings),{...project.finishing,sageAttention:!!project.settings.sageAttention},project.settings.width,project.settings.height),project)];
+  const prompts=imageOnly?[]:[compileRequest(graph.output,{...project,mode:'reference',commonPrompt:'',media:{images:[],audios:[],videos:[]}},{id:'model-check',number:1,seconds:1,prompt:'模型检查'}).prompt];
   if(imageOnly||project.mode==='auto_character')prompts.push(compileCharacterImage(project,{id:'CHECK',name:'模型检查',description:'仅检查模型，不提交生图'}).prompt);
   const report=modelReport(await response.json(),prompts);const dependencyErrors=await dependencyController.check(prompts[0]||{});if(install||dependencyErrors.length||report.missing.length||report.nodes.length||report.unknown.length)showPanel('models');log(reportText(report));await downloader.show(report);if(install){await downloader.install(report);if(report.nodes.length)log('模型下载已处理；以下是缺少的节点，需要更新ComfyUI，不是下载权重：\n'+report.nodes.join('\n'));}else{assertModels(report);if(dependencyErrors.length)throw Error('缺少运行依赖：\n'+dependencyErrors.join('\n'));}return report;
  }
@@ -341,17 +340,7 @@ function attach(node){
   }finally{setBusy(false);}
  }});};
  compareResult.onclick=()=>{try{const [a,b]=project.comparison.groups;openVideoCompare({root,left:{...a.job.videos[0],label:a.label},right:{...b.job.videos[0],label:b.label},view,title:'固定条件A/B画质对比 · 种子 '+project.comparison.seed});}catch(e){log('请先完成A/B两段生成：'+e.message);}};
- $('export').onclick=async()=>{try{if(project.settings.sageAttention||project.selflift?.enabled||project.finishing?.refine||(project.finishing?.upscale&&project.finishing.upscale!=='off')){const request=compileRequest((await app.graphToPrompt()).output,project,current());download(request.prompt,project.name+'_含精修_API.json');log('已导出包含精修、放大和一采保存的执行API（供ComfyUI API使用）；可视化工作区请用保存工程。');return;}const g=current();const video=videoWithCharacters(project,g);const plan=planGroup(video.project,video.group);const original=app.graph.serialize();const target=original.nodes.find(n=>n.type==='MiniMaxH3ReferenceToVideo');if(!target)throw Error('缺少官方H3节点');const uploaded=Object.fromEntries(['images','audios','videos'].map(key=>[key,plan[key].map(row=>row.file)]));
-   const loader=(type,value)=>{const fresh=globalThis.LiteGraph.createNode(type);if(!fresh)throw Error('ComfyUI缺少官方节点 '+type);const key={LoadImage:'image',LoadAudio:'audio',LoadVideo:'file',PrimitiveStringMultiline:'value',PrimitiveInt:'value'}[type];if(key){const w=fresh.widgets?.find(w=>w.name===key);if(!w)throw Error(type+'参数接口不兼容');w.value=value;}const data=fresh.serialize();fresh.onRemoved?.();return data;};
-   const result=buildOfficialImport(original,target.id,plan,uploaded,loader);verifyOfficialImport(result.graph,result);const output=result.graph;
-   for(const n of output.nodes){
-    if(n.type==='MiniMaxH3ReferenceToVideo'){n.widgets_values[1]=project.settings.width;n.widgets_values[2]=project.settings.height;}
-    if(n.type==='BasicScheduler'){n.widgets_values[0]=project.settings.scheduler;n.widgets_values[1]=project.settings.steps;}
-    if(n.type==='RandomNoise')n.widgets_values[0]=project.settings.seed;
-    if(n.type==='KSamplerSelect')n.widgets_values[0]=project.settings.sampler;
-   }
-   accelerateWorkflow(output,project.settings);output.nodes=output.nodes.filter(n=>n.type!=='H3VisualProject');download(output,`${project.name}_素材组${g.number}_官方.json`);log('已导出本组官方工作流；没有提交任务。');
-  }catch(error){log('导出失败：'+error.message);}};
+ $('export').onclick=async()=>{try{const request=compileRequest((await app.graphToPrompt()).output,project,current());download(request.prompt,project.name+'_导演台_API.json');log('已导出导演台内核执行API（供ComfyUI API使用）；可视化工作区请用保存工程。');}catch(error){log('导出失败：'+error.message);}};
  syncSettings();
  setTimeout(()=>{if(!disposed)downloader.resume();},0);
  const dom=node.addDOMWidget('h3_visual','H3Visual',host,{serialize:false,hideOnZoom:false});dom.computeSize=()=>[1760,1020];

@@ -1,0 +1,36 @@
+H3 Visual Studio — integrated MiniMax H3 Director runtime
+
+This distribution includes code from:
+  MiniMax H3 Director, maintained by AI搅拌手 / AIMixer
+  https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director
+  License: Apache License, Version 2.0 (LICENSE and director_core/LICENSE)
+
+The runtime was copied from the user-provided MiniMaxComfyUiPlugin source
+on 2026-10-21. No upstream commit identifier was available. Original Python
+source hashes are retained in director_core/source-manifest.json.
+Upstream documentation and acknowledgments are preserved verbatim in
+director_core/UPSTREAM_README.md. Existing source notices remain intact.
+The supplied upstream source contained no separate NOTICE file.
+
+Local integration and changes:
+  - Studio-specific node registration and reference-group adapter.
+  - Studio UI and project data compiled to the Director executor.
+  - director_core/director/refine_pack.py modified to honor an explicit
+    Studio target canvas. A change notice is present in that source file.
+  - director_core/__init__.py is a local, registration-free initializer.
+Upstream UI and HTTP management routes are not registered by this package.
+
+Upstream acknowledgments include:
+  Comfy-Org / ComfyUI; MiniMax-AI; Comfy-Org/MiniMax-H3;
+  NikoDemon80/ComfyUI-H3-Motion-Context;
+  LBH-123-AI/Comfyui_Minimax_h3_latent_Upscaler;
+  slmonker/selflift-Avatar;
+  speach1sdef178/MiniMax-H3-Semantic-Bridge;
+  JOKER141/BUNNY_H3_Conditioning_Bridge.
+See the preserved upstream README for links and the nature of each credit.
+These acknowledgments do not claim that every referenced project was copied
+or is licensed identically, and do not imply endorsement by their authors.
+
+Model weights, external dependencies and FFmpeg executables are separate
+components. Their own licenses continue to apply; the Apache-2.0 license
+here does not relicense them. Model downloads remain linked to their sources.

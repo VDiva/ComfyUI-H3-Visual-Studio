@@ -1,20 +1,4 @@
 """Sequential frame SR using ComfyUI's installed image upscaler; no silent fallback."""
-class H3PreserveImages:
-    @classmethod
-    def INPUT_TYPES(cls): return {"required":{"images":("IMAGE",),"saved_video":("VIDEO",)}}
-    RETURN_TYPES=("IMAGE",)
-    FUNCTION="keep"
-    CATEGORY="MiniMax H3/Visual Studio"
-    def keep(self,images,saved_video): return (images,)
-
-class H3PreserveLatent:
-    @classmethod
-    def INPUT_TYPES(cls): return {"required":{"samples":("LATENT",),"saved_video":("VIDEO",)}}
-    RETURN_TYPES=("LATENT",)
-    FUNCTION="keep"
-    CATEGORY="MiniMax H3/Visual Studio"
-    def keep(self,samples,saved_video): return (samples,)
-
 class H3FrameUpscale:
     @classmethod
     def INPUT_TYPES(cls):

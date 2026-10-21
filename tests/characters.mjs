@@ -4,7 +4,7 @@ import {createRequire} from 'node:module';
 import {defaultProject,readWorkspace,compileRequest} from '../web/project.mjs';
 import {discoverCharacters,compileCharacterImage,imageRecipe,referenceReady,videoWithCharacters,checkImageModels,generatedImage} from '../web/characters.mjs';
 const require=createRequire(import.meta.url);const {parseFiles}=require('../web/folder-core.js');
-const base=JSON.parse(await fs.readFile(new URL('../examples/官方采样API基线.json',import.meta.url),'utf8'));
+const base=JSON.parse(await fs.readFile(new URL('./.fixtures/官方采样API基线.json',import.meta.url),'utf8'));
 let passed=0;async function test(name,fn){await fn();passed++;console.log('PASS '+name);}
 function page(){const p=defaultProject();p.mode='auto_character';p.pageId='test';p.groups=[{id:'g1',number:1,seconds:4,prompt:'<Picture 7> 知夏（S3）黑色长发蓝外套。亦辰（S2）短黑发白衬衫。<d>[Chinese] 你好。</d>'},{id:'g2',number:2,seconds:3,prompt:'亦辰（S2）回头。'}];p.characters=discoverCharacters(p);return p;}
 function ready(p){for(const [i,c] of p.characters.entries()){const row={id:i+20,name:c.name,file:'generated/'+c.id+'.png',generatedCharacterId:c.id};p.media.images.push(row);c.reference={pictureId:row.id,file:row.file,recipe:imageRecipe(p,c)};}return p;}
