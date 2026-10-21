@@ -1,5 +1,15 @@
 H3 Visual Studio — integrated MiniMax H3 Director runtime
 
+Optional proxy integration: Mihomo, maintained by MetaCubeX,
+https://github.com/MetaCubeX/mihomo (GPL-3.0).
+The Studio communicates with Mihomo as a separate process through its local
+REST/HTTP interfaces. No Mihomo source or executable is included in this
+distribution. The optional installer fetches the official v1.19.32 asset,
+verifies its published SHA256, and retains its unmodified LICENSE and exact
+release/source URL beside the privately installed executable. Do not treat
+that executable as covered by the Studio's Apache-2.0 license or include
+private subscription/runtime files when redistributing this plugin.
+
 This distribution includes code from:
   MiniMax H3 Director, maintained by AI搅拌手 / AIMixer
   https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director

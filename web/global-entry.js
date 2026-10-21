@@ -1,12 +1,12 @@
-import {mountPluginUpdater} from './plugin-update.mjs?v=0.14.4';
-import {openFolderTemplate} from './folder-template.mjs?v=0.14.4';
+import {mountPluginUpdater} from './plugin-update.mjs?v=0.15.0';
+import {openFolderTemplate} from './folder-template.mjs?v=0.15.0';
 import {api} from '../../scripts/api.js';
-import {migrateWorkflow,repairCurrentWorkflow} from './migrate-workflow.mjs?v=0.14.4';
+import {migrateWorkflow,repairCurrentWorkflow} from './migrate-workflow.mjs?v=0.15.0';
 import {app} from '../../scripts/app.js';
-import {mountGlobalImporter} from './bootstrap.mjs?v=0.14.4';
-import './folder-core.js?v=0.14.4';
+import {mountGlobalImporter} from './bootstrap.mjs?v=0.15.0';
+import './folder-core.js?v=0.15.0';
 let studio;
-const load=()=>import('./studio.js?v=0.14.4').then(module=>(studio=module));
+const load=()=>import('./studio.js?v=0.15.0').then(module=>(studio=module));
 function download(value,name){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 app.registerExtension({name:'H3.Visual.Studio.GlobalImporter',beforeConfigureGraph(data){migrateWorkflow(data);},setup(){
  const mount=()=>{

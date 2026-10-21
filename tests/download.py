@@ -30,7 +30,11 @@ with tempfile.TemporaryDirectory() as temp:
  def bad(request,timeout):
   if '/api/models/' in request.full_url:return opener(request,timeout)
   return io.BytesIO(b'x'*len(content))
- manager.opener=bad;manager.run(model);assert manager.status()[model['key']]['state']=='error';assert not target.exists();assert not list(Path(temp).glob('*.part'))
+ manager.opener=bad;manager.run(model);assert manager.status()[model['key']]['state']=='error';assert not target.exists();assert list(Path(temp).glob('*.part'))
+ assert manager.status()[model['key']]['expected_sha256']==digest
+ assert manager.status()[model['key']]['actual_sha256']==hashlib.sha256(b'x'*len(content)).hexdigest()
+ assert json.loads(next(Path(temp).glob('*.part.json')).read_text())['verification_failed']
+ manager.opener=opener;manager.run(model);assert manager.status()[model['key']]['state']=='done';assert target.read_bytes()==content
 print('PASS pinned-revision download, SHA256/size verification, progress, duplicate queue, unknown-key rejection, no overwrite and corrupt-file cleanup')
 
 clock=[0.0];rate=m.DownloadRate(lambda:clock[0]);clock[0]=1;rate.add(1024);assert rate.value()==1024

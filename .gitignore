@@ -5,6 +5,7 @@ __pycache__/
 download-proxy.json
 .h3-update-state.json
 *.local.json
+.h3-mihomo/
 tests/.fixtures/*
 !tests/.fixtures/官方采样API基线.json
 !tests/.fixtures/官方可视化工作流.json

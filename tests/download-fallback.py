@@ -6,12 +6,13 @@ spec=importlib.util.spec_from_file_location('downloads',root/'model_download.py'
 body=b'verified model';digest=hashlib.sha256(body).hexdigest()
 model={'key':'models/vae/test','category':'vae','name':'test','url':'https://huggingface.co/owner/repo/resolve/main/test'}
 meta=json.dumps({'sha':'pinned','siblings':[{'rfilename':'test','size':len(body),'lfs':{'sha256':digest}}]}).encode()
-for scenario in ['mirror_ok','metadata_timeout','file_404','metadata_html','metadata_missing_hash','file_eof','file_corrupt','mirror_403']:
+for scenario in ['mirror_ok','metadata_timeout','file_404','metadata_html','metadata_missing_hash','file_eof','file_corrupt','mirror_403','mirror_hash_then_official','corrupt_prefix']:
  with tempfile.TemporaryDirectory() as temp:
   calls=[];detect=[]
   def official(req,timeout):
    calls.append(('official',req.full_url,timeout))
    assert req.get_header('Authorization')=='Bearer secret'
+   if scenario=='corrupt_prefix' and '/api/' not in req.full_url:assert req.get_header('Range') is None,'must discard corrupt mirror prefix'
    return io.BytesIO(meta if '/api/' in req.full_url else body)
   def mirror(req,timeout):
    calls.append(('mirror',req.full_url,timeout))
@@ -21,11 +22,13 @@ for scenario in ['mirror_ok','metadata_timeout','file_404','metadata_html','meta
     if scenario=='metadata_timeout':raise TimeoutError('offline')
     if scenario=='metadata_html':return io.BytesIO(b'<html>login</html>')
     if scenario=='metadata_missing_hash':return io.BytesIO(b'{}')
+    if scenario=='mirror_hash_then_official':return io.BytesIO(meta.replace(digest.encode(),b'0'*64))
     if scenario=='mirror_403':raise urllib.error.HTTPError(req.full_url,403,'denied',{},None)
     return io.BytesIO(meta)
    assert '/resolve/pinned/test' in req.full_url
-   if scenario=='file_404':raise urllib.error.HTTPError(req.full_url,404,'missing',{},None)
+   if scenario in ['file_404','mirror_hash_then_official']:raise urllib.error.HTTPError(req.full_url,404,'missing',{},None)
    if scenario=='file_eof':return io.BytesIO(body[:5])
+   if scenario=='corrupt_prefix':return io.BytesIO(b'x'*5)
    if scenario=='file_corrupt':return io.BytesIO(b'x'*len(body))
    return io.BytesIO(body)
   d=m.Downloads(lambda _:temp,opener=official,sleeper=lambda _:None);d.internal_opener=mirror

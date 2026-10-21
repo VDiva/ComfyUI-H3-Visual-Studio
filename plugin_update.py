@@ -8,7 +8,7 @@ STATE_FILE=".h3-update-state.json"
 MAX_ARCHIVE=512*1024**2
 MAX_UNPACKED=1536*1024**2
 REQUIRED=("__init__.py","version.json","web/studio-runtime.mjs","web/global-entry.js","model-catalog.json",
-          "director_bridge.py","requirements.txt","web/project.mjs","web/director-core.mjs","web/workflow-template.mjs",
+          "director_bridge.py","proxy_core.py","requirements.txt","web/project.mjs","web/director-core.mjs","web/proxy-core.mjs","web/workflow-template.mjs",
           "LICENSE","NOTICE","NOTICE-Director.md","director_core/LICENSE","director_core/__init__.py",
           "director_core/source-manifest.json","director_core/source-normalized-manifest.json",
           "director_core/nodes/director.py","director_core/director/executor_core.py")

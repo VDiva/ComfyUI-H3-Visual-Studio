@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {modelDownloader} from '../web/model-download.mjs';
-const nodes=[];const node=()=>({style:{},children:[],isConnected:true,append(...v){this.children.push(...v);},replaceChildren(){this.children=[];},querySelector(){return node();}});
+const nodes=[];const node=()=>({style:{},dataset:{},children:[],isConnected:true,setAttribute(){},append(...v){this.children.push(...v);},replaceChildren(){this.children=[];},querySelector(){return node();}});
 globalThis.document={createElement(type){const n=node();n.tag=type;nodes.push(n);return n;},createTextNode:text=>({text})};
 const scheduled=[];globalThis.setTimeout=(fn,ms)=>{scheduled.push({fn,ms});return scheduled.length;};globalThis.clearTimeout=()=>{};
 let calls=0;const api={async fetchApi(url,options){assert.equal(options,undefined,'resume must not POST downloads');calls++;if(calls===1)throw Error('temporary disconnect');return {ok:true,json:async()=>({catalog:[],proxy:{},jobs:{test:{state:'downloading',total:10,bytes:2,speed_bps:1,eta_seconds:8}}})};}};

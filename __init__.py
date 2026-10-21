@@ -1,5 +1,6 @@
 """Visual project metadata only. Video execution uses the bundled Director runtime."""
 import json
+from pathlib import Path
 video_processing_jobs = None
 
 def ensure_update_idle():
@@ -88,10 +89,27 @@ if PromptServer is not None:
         cache = getattr(folder_paths, "filename_list_cache", None)
         if isinstance(cache, dict): cache.clear()
     downloads = Downloads(model_directory, invalidate_models)
+    source_config_path=Path(__file__).parent / 'download-source.local.json'
+    try:
+        if source_config_path.is_file():downloads.configure_source(json.loads(source_config_path.read_text(encoding='utf-8-sig')).get('mode','auto'))
+    except (ValueError,OSError,AttributeError):pass
 
     @PromptServer.instance.routes.get("/h3_visual_studio/models")
     async def model_download_status(request):
-        return web.json_response({"catalog": load_catalog(), "backend_version": BACKEND_VERSION, "jobs": downloads.status(), "proxy":downloads.proxy_info()})
+        return web.json_response({"catalog": load_catalog(), "backend_version": BACKEND_VERSION, "jobs": downloads.status(), "proxy":downloads.proxy_info(),"source_mode":downloads.source_mode})
+
+    @PromptServer.instance.routes.post('/h3_visual_studio/models/source')
+    async def configure_model_source(request):
+        try:
+            ensure_update_idle()
+            payload=await request.json()
+            if not isinstance(payload,dict) or payload.get('mode') not in Downloads.SOURCE_MODES:raise ValueError('下载源选项无效')
+            mode=payload['mode']
+            temp=source_config_path.with_suffix('.json.tmp')
+            temp.write_text(json.dumps({'mode':mode}),encoding='utf-8')
+            temp.replace(source_config_path)
+            return web.json_response({'source_mode':downloads.configure_source(mode)})
+        except (ValueError,OSError,TypeError) as error:return web.json_response({'error':str(error)},status=400)
 
     @PromptServer.instance.routes.post("/h3_visual_studio/models/download")
     async def start_model_download(request):
@@ -130,6 +148,25 @@ if PromptServer is not None:
         result=await asyncio.to_thread(downloads.auto_detect_proxy, True)
         proxy_config_path.write_text(json.dumps({"address":""}),encoding="utf-8")
         return web.json_response({"proxy":result})
+
+if PromptServer is not None:
+    from .proxy_core import ProxyCore
+    def save_core_proxy(address):
+        proxy_config_path.write_text(json.dumps({'address':address}),encoding='utf-8')
+    proxy_core=ProxyCore(Path(__file__).parent,downloads,save_core_proxy)
+
+    @PromptServer.instance.routes.get('/h3_visual_studio/proxy-core')
+    async def proxy_core_status(request):
+        return web.json_response(proxy_core.snapshot())
+
+    @PromptServer.instance.routes.post('/h3_visual_studio/proxy-core')
+    async def proxy_core_action(request):
+        try:
+            ensure_update_idle()
+            origin=request.headers.get('Origin')
+            if origin and __import__('urllib.parse',fromlist=['urlsplit']).urlsplit(origin).netloc.lower()!=request.host.lower():raise ValueError('请从当前ComfyUI页面操作代理')
+            return web.json_response(proxy_core.start_action(await request.json()))
+        except (ValueError,TypeError) as error:return web.json_response({'error':str(error)},status=400)
 
 if PromptServer is not None:
     from .folder_zip import template_zip
@@ -209,6 +246,7 @@ if PromptServer is not None:
     from .plugin_update import PluginUpdater
     from .merge_video import _LOCK as merge_lock
     def plugin_busy_reason():
+        if proxy_core.busy or proxy_core.process is not None:return '请先完成代理操作并停止Mihomo内核，再更新插件'
         if PromptServer.instance.prompt_queue.get_tasks_remaining()>0:return "请等待ComfyUI生成队列结束后再更新插件"
         if any(j.get('state') in {'queued','running','merging','paused'} for j in list(batches.jobs.values())):return "请先完成或停止后台批次，再更新插件"
         if merge_lock.locked():return "FFmpeg正在合并，请完成后再更新插件"

@@ -4,7 +4,7 @@ import time
 from collections import deque
 import urllib.error, urllib.parse, socket, errno, http.client, ssl
 import re, json, threading, concurrent.futures, urllib.request, hashlib, os, shutil
-BACKEND_VERSION = "0.5.9"
+BACKEND_VERSION = "0.5.11"
 CATALOG_PATH = Path(__file__).parent / "model-catalog.json"
 DMAD_MODEL = {
     "key": "models/loras/dmad_minimax_h3_4step_full_critic_comfyui.safetensors",
@@ -82,11 +82,13 @@ def detect_proxy(candidates=None, connector=socket.create_connection, validate=N
     return {"address":"","source":"自动检测","message":"未找到可访问下载站的HTTP代理，使用系统默认连接；请确认云端Clash已启动"}
 
 class Downloads:
+    SOURCE_MODES=('auto','xiangongyun','official')
     def __init__(self, directory, invalidate=lambda: None, opener=urllib.request.urlopen, sleeper=time.sleep):
         self.directory, self.invalidate, self.opener = directory, invalidate, opener
         self.internal_opener=urllib.request.build_opener(urllib.request.ProxyHandler({})).open
         self.sleeper=sleeper
         self.proxy_address=""
+        self.source_mode='auto'
         self.auto_proxy="";self.proxy_message="等待自动检测";self.proxy_checked=0
         self.auto_enabled=opener is urllib.request.urlopen
         self.jobs = {}; self.rates = {}; self.lock = threading.Lock()
@@ -110,7 +112,8 @@ class Downloads:
         if parsed.scheme != "https" or parsed.netloc != "huggingface.co":
             return self.opener(request, timeout=timeout)
         with self.lock:
-            official=self.jobs[key].get("download_source")=="official"
+            mode=self.jobs[key].get('source_mode',self.source_mode)
+            official=mode=='official' or (mode=='auto' and self.jobs[key].get("download_source")=="official")
             available=self.jobs[key].get("mirror_available",False)
         if not official:
             self.update(key, download_source="xiangongyun")
@@ -123,12 +126,18 @@ class Downloads:
                 self.update(key,mirror_available=True)
                 return response
             except Exception as error:
+                if mode=='xiangongyun':raise
                 if not (self.source_failure(error) or isinstance(error,urllib.error.HTTPError)):
                     raise
-                self.update(key, download_source="official",
+                self.update(key, download_source="official",reset_mirror_prefix=True,
                             error="仙宫云线路不可用，切换Hugging Face官方源")
         self.auto_detect_proxy()
         return self.opener(request, timeout=timeout)
+
+    def configure_source(self, mode):
+        if mode not in self.SOURCE_MODES:raise ValueError('下载源请选择auto、xiangongyun或official')
+        with self.lock:self.source_mode=mode
+        return mode
 
     def configure_proxy(self, address):
         if not isinstance(address,str): raise ValueError("代理地址格式错误")
@@ -174,7 +183,7 @@ class Downloads:
             with self.lock:
                 if self.jobs.get(key,{}).get("state") in {"queued","connecting","downloading","verifying","retrying"}: continue
                 self.rates.pop(key,None)
-                self.jobs[key]={"state":"queued","bytes":0,"total":catalog[key]["size"],"error":""}
+                self.jobs[key]={"state":"queued","bytes":0,"total":catalog[key]["size"],"error":"","source_mode":self.source_mode}
             self.pool.submit(self.run,catalog[key])
         return self.status()
     def run(self, model, _official=False):
@@ -189,7 +198,9 @@ class Downloads:
             headers={"User-Agent":"H3-Visual-Studio"}
             token=os.environ.get("HF_TOKEN")
             if token: headers["Authorization"]="Bearer "+token
-            self.update(key,state="connecting",download_source="official" if _official else "xiangongyun",mirror_available=False)
+            with self.lock:
+                mode=self.jobs[key].setdefault('source_mode',self.source_mode)
+            self.update(key,state="connecting",download_source="official" if _official or mode=='official' else "xiangongyun",mirror_available=False,reset_mirror_prefix=False)
             # Resolve exact repository metadata in the cloud, where download happens.
             repo, filepath = model["url"].split("https://huggingface.co/",1)[1].split("/resolve/main/",1)
             stage="获取模型信息"
@@ -202,8 +213,10 @@ class Downloads:
                     if not isinstance(expected,str) or not re.fullmatch(r"[a-f0-9]{64}",expected) or not isinstance(size,int) or size<=0 or not isinstance(metadata.get('sha'),str) or not metadata['sha']:raise ValueError("下载源未返回版本、大小/SHA256，无法校验，未下载")
                     break
                 except (ValueError,TypeError,AttributeError,OSError,http.client.HTTPException) as error:
-                    if self.jobs[key].get('download_source')!='xiangongyun' or metadata_attempt:raise
+                    if mode!='auto' or self.jobs[key].get('download_source')!='xiangongyun' or metadata_attempt:raise
                     self.update(key,download_source='official',error='仙宫云模型信息不可用，切换官方源')
+            metadata_source=self.jobs[key].get('download_source')
+            self.update(key,reset_mirror_prefix=False)
             marker=part.with_name(part.name+".json")
             identity={"sha256":expected,"size":size}
             try: compatible=json.loads(marker.read_text())==identity
@@ -218,11 +231,21 @@ class Downloads:
             stage="下载模型文件"
             for attempt in range(1,5):
                 offset=part.stat().st_size if part.exists() else 0
+                if offset and self.jobs[key].get('reset_mirror_prefix'):
+                    part.unlink(missing_ok=True);offset=0
+                    self.update(key,bytes=0,reset_mirror_prefix=False)
                 if offset==size: break
                 try:
                     request_headers=dict(headers)
                     if offset: request_headers["Range"]="bytes="+str(offset)+"-"
                     with self.open_source(urllib.request.Request(url,headers=request_headers),key,timeout=60) as response:
+                        # A failed mirror stream may contain bytes from another
+                        # mirror artifact. Never concatenate that prefix with HF.
+                        if self.jobs[key].get('reset_mirror_prefix') and offset:
+                            part.unlink(missing_ok=True)
+                            self.update(key,bytes=0,reset_mirror_prefix=False)
+                            continue
+                        self.update(key,reset_mirror_prefix=False)
                         status=getattr(response,"status",200)
                         if status==206:
                             content_range=response.headers.get("Content-Range","")
@@ -248,7 +271,9 @@ class Downloads:
                 except (OSError,urllib.error.URLError,http.client.HTTPException) as error:
                     if isinstance(error,urllib.error.HTTPError) and error.code not in {408,429,500,502,503,504}: raise
                     if isinstance(error,OSError) and error.errno in {errno.ENOSPC,errno.EACCES,errno.EROFS,errno.EPERM}: raise
-                    if self.source_failure(error): self.update(key,download_source="official")
+                    if mode=='auto' and self.source_failure(error):
+                        was_mirror=self.jobs[key].get('download_source')=='xiangongyun'
+                        self.update(key,download_source="official",reset_mirror_prefix=was_mirror)
                     if attempt==4: raise ConnectionError("自动重试4次仍失败；已保留断点，点击重试可继续。"+str(error)) from error
                     self.update(key,state="retrying",attempt=attempt,error=download_error(error,stage))
                     self.sleeper(min(2**attempt,8))
@@ -258,13 +283,17 @@ class Downloads:
             with part.open("rb") as downloaded:
                 while chunk:=downloaded.read(4*1024*1024): digest.update(chunk)
             if part.stat().st_size!=size: raise ValueError("下载文件不完整，已保留断点")
-            if digest.hexdigest()!=expected:
-                part.unlink(missing_ok=True);marker.unlink(missing_ok=True)
-                if self.jobs[key].get('download_source')=='xiangongyun':
+            actual=digest.hexdigest()
+            self.update(key,expected_sha256=expected,actual_sha256=actual,revision=metadata['sha'],metadata_source=metadata_source)
+            if actual!=expected:
+                # Keep evidence until the next retry. This marker prevents
+                # resuming a known-bad full file or installing it as a model.
+                marker.write_text(json.dumps({**identity,'verification_failed':True,'actual_sha256':actual}),encoding='utf-8')
+                if mode=='auto' and not _official and (metadata_source=='xiangongyun' or self.jobs[key].get('download_source')=='xiangongyun'):
                     self.update(key,state='retrying',download_source='official',error='仙宫云文件校验失败，改从官方重新下载')
                     self.run(model,_official=True)
                     return
-                raise ValueError("完整文件SHA256校验失败，损坏文件已清除，请重试")
+                raise ValueError("完整文件SHA256校验失败，文件已保留待检查，未安装；重试会重新下载。预期="+expected+"；实际="+actual)
             # Never overwrite files created by another downloader while this job was running.
             stage="安装模型文件"
             os.link(part,target);part.unlink();marker.unlink(missing_ok=True);part=None

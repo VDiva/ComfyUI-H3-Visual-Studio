@@ -1,25 +1,26 @@
-import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.14.4';
-import {backgroundBatch} from './background-batch.mjs?v=0.14.4';
-import {generationSummary} from './generation-summary.mjs?v=0.14.4';
-import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.14.4';
-import {openVideoCompare} from './video-compare.mjs?v=0.14.4';
-import {mountDependencies} from './dependencies.mjs?v=0.14.4';
-import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.14.4';
-import {mountSelfLift} from './selflift.mjs?v=0.14.4';
-import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.14.4';
-import {executionProgress} from './execution-progress.mjs?v=0.14.4';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.14.4';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.14.4';
-import {openFolderTemplate} from './folder-template.mjs?v=0.14.4';
-import {livePreview} from './live-preview.mjs?v=0.14.4';
-import {modelDownloader} from './model-download.mjs?v=0.14.4';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.14.4';
-import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.14.4';
+import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.0';
+import {mountProxyCore} from './proxy-core.mjs?v=0.15.0';
+import {backgroundBatch} from './background-batch.mjs?v=0.15.0';
+import {generationSummary} from './generation-summary.mjs?v=0.15.0';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.0';
+import {openVideoCompare} from './video-compare.mjs?v=0.15.0';
+import {mountDependencies} from './dependencies.mjs?v=0.15.0';
+import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.0';
+import {mountSelfLift} from './selflift.mjs?v=0.15.0';
+import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.0';
+import {executionProgress} from './execution-progress.mjs?v=0.15.0';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.0';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.15.0';
+import {openFolderTemplate} from './folder-template.mjs?v=0.15.0';
+import {livePreview} from './live-preview.mjs?v=0.15.0';
+import {modelDownloader} from './model-download.mjs?v=0.15.0';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.0';
+import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.0';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.14.4';
-import './folder-core.js?v=0.14.4';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.14.4';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.0';
+import './folder-core.js?v=0.15.0';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.0';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -33,19 +34,25 @@ const style=`
 .shell{padding:16px;gap:12px;background:#101820}.head{flex-wrap:wrap;flex-shrink:0;border-bottom:1px solid #2b3c49;padding-bottom:12px}.head h2{font-size:19px}.head .file-actions{display:flex;gap:6px}.layout{grid-template-columns:135px minmax(0,1fr) 220px;gap:14px}.content{overflow:hidden;padding:0}.content #edit{flex:1;min-height:0;overflow:hidden;gap:12px}.page-meta{padding:12px;background:#162330;border-radius:9px}.page-meta .row+.row{margin-top:8px}.page-meta input#name{min-width:80px;width:100px}.workspace-tabs{display:flex;gap:4px;border-bottom:1px solid #334754;padding-bottom:7px;flex-shrink:0;overflow:auto}.workspace-tabs button{white-space:nowrap;border:0;background:transparent;padding:8px 12px}.workspace-tabs button.active{background:#244b44;color:#8aefcf}.tab-panel{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:2px}.tab-panel[hidden]{display:none!important}#panel-shots{overflow:hidden}#panel-shots>.row{flex-shrink:0}.timeline{min-height:38px;max-height:55px;flex-shrink:0}.timeline button{padding:5px 8px}.work{grid-template-columns:120px minmax(0,1fr);min-height:0;flex:1;overflow:hidden}.groups{max-height:none;overflow:auto}.editor{overflow:auto}.editor #prompt{min-height:220px;flex:1;resize:none}.editor #result{display:none}.live-pane{display:flex;flex-direction:column;gap:10px;padding:10px;border:1px solid #293c49}.live-pane .title{font-size:13px}.live-pane img,.live-pane video{max-height:calc(100vh - 250px);border-radius:8px}.runbar{padding:12px;background:#172632;border-radius:9px;border:1px solid #2b414f}.runbar .primary{font-weight:600}.runbar .muted{display:none}.status{max-height:76px;min-height:35px;margin:0}#model-downloads{max-height:none;overflow:visible}#panel-models>p{margin:0}.pages{display:flex;flex-direction:column;gap:8px}.pages>#page-list{overflow:auto;flex:1;min-height:0}.pages>#delete-page{font-size:11px;padding:5px;color:#a9bdcb}.page{padding:9px 8px}.library{padding:14px}.gallery{max-height:none;flex-wrap:wrap;overflow:visible}.asset{flex-basis:140px}.asset img{width:130px;height:90px}.settings{background:transparent}.settings[open]{display:flex;flex-direction:column;gap:12px}.settings>summary{cursor:pointer}.settings textarea{min-height:180px}.head .badge{display:none}
 @media(max-width:1200px){.layout{grid-template-columns:115px minmax(0,1fr) 180px}.work{grid-template-columns:105px minmax(0,1fr)}.shell{padding:10px;gap:8px}.head h2{font-size:16px}.head button{padding:6px 8px}.runbar{gap:5px;padding:8px}.runbar button{padding:7px 9px}.page-meta{padding:8px}.workspace-tabs button{padding:7px 8px}}
 .layout{grid-template-columns:190px minmax(0,1fr) 220px}#resolution-guide{font-size:11px;line-height:1.7;max-height:260px;overflow:auto}@media(max-width:1200px){.layout{grid-template-columns:170px minmax(0,1fr) 180px}}
+:host{container-type:inline-size}.layout>*{min-width:0}.head .file-actions{flex-wrap:wrap}.workspace-tabs{min-width:0}
+@container(max-width:1000px){.layout{grid-template-columns:140px minmax(0,1fr) 180px;gap:10px}.work{grid-template-columns:100px minmax(0,1fr)}}
+@container(max-width:800px){.layout{grid-template-columns:130px minmax(0,1fr);grid-template-rows:minmax(300px,1fr) 160px}.live-pane{grid-column:1/-1}.live-pane img,.live-pane video{max-height:110px}.page-meta .row{align-items:flex-start}}
+@container(max-width:560px){.layout{display:flex;flex-direction:column;overflow:auto}.pages{flex:none;max-height:130px}.pages>#page-list{display:flex;gap:6px}.pages .page{width:auto;flex-shrink:0}.pages #resolution-guide{display:none}.content{flex:none;min-height:480px}.live-pane{flex:none;min-height:160px}.head .grow{display:none}.work{grid-template-columns:85px minmax(0,1fr)}}
 `;
 function attach(node){
  if(states.has(node))return;
  const host=document.createElement('div'),root=host.attachShadow({mode:'open'});
+ host.style.cssText='display:block;width:100%;height:100%;min-width:0;min-height:0;--comfy-widget-min-height:720px;--comfy-widget-height:100%;';
  const widget=node.widgets?.find(w=>w.name==='project_json');
  if(!widget)return;
- widget.type='HIDDEN';widget.computeSize=()=>[0,-4];
+ widget.type='hidden';widget.hidden=true;widget.computeSize=()=>[0,-4];
+ widget.computeLayoutSize=()=>({minWidth:0,minHeight:0,maxHeight:0});
  let workspace,project,selected=0,tab='images',busy=false,stop=false,disposed=false,chapters=[],activeJob=null;
  try{workspace=readWorkspace(widget.value);}catch{workspace=readWorkspace({});}
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.14.4</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.0</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组导演台API</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
@@ -258,6 +265,7 @@ function attach(node){
   }throw Error('面板已关闭，停止后续提交；已提交任务仍在服务器运行');
  }
  const dependencyController=mountDependencies({api,container:panels.models,log});
+ const proxyController=mountProxyCore({api,container:panels.models,log});
  const downloader=modelDownloader({api,container:$('model-downloads'),log,recheck:async()=>{try{showPanel('models');await checkAllModels(await app.graphToPrompt());}catch(error){log(error.message);}}});
  async function checkAllModels(graph,{imageOnly=false,install=false}={}){
   const response=await api.fetchApi('/object_info');if(!response.ok)throw Error('无法获取云端模型清单，未提交任务');
@@ -343,8 +351,13 @@ function attach(node){
  $('export').onclick=async()=>{try{const request=compileRequest((await app.graphToPrompt()).output,project,current());download(request.prompt,project.name+'_导演台_API.json');log('已导出导演台内核执行API（供ComfyUI API使用）；可视化工作区请用保存工程。');}catch(error){log('导出失败：'+error.message);}};
  syncSettings();
  setTimeout(()=>{if(!disposed)downloader.resume();},0);
- const dom=node.addDOMWidget('h3_visual','H3Visual',host,{serialize:false,hideOnZoom:false});dom.computeSize=()=>[1760,1020];
- node.setSize([1800,1100]);host.addEventListener('pointerdown',e=>e.stopPropagation());host.addEventListener('keydown',e=>e.stopPropagation());
+ const dom=node.addDOMWidget('h3_visual','H3Visual',host,{serialize:false,hideOnZoom:false,selectOn:[],getMinHeight:()=>720,getHeight:()=> '100%'});
+ dom.computeSize=width=>[Math.max(960,Number(width)||1760),1020];
+ dom.computeLayoutSize=()=>({minWidth:960,minHeight:720,maxHeight:undefined});
+ node.setSize([1800,1100]);
+ // Keep editor clicks/focus inside the panel instead of selecting the canvas
+ // node and triggering inspector-driven widget re-layout on every tab switch.
+ for(const event of ['pointerdown','pointerup','mousedown','mouseup','click','dblclick','keydown'])host.addEventListener(event,e=>e.stopPropagation());
  const state={installModels,importChapters,getMode:()=>project.mode,isBusy:()=>busy||pluginUpdateBlocked()||workspace.pages.some(p=>['submitting','unknown','queued','running','merging','paused'].includes(p.batch?.state)),async queueCurrent(number,data,send,options){
   if(busy||batchController.active||pluginUpdateBlocked())throw Error('插件更新中或可视化工作室已有任务或后台批次，请等待或停止后续提交');
   const g=current();if(!g)throw Error('请先在可视化工作室中导入素材或添加分组');
@@ -355,7 +368,7 @@ function attach(node){
    const response=await send(number,{output:request.prompt,workflow},options);if(!response?.prompt_id)throw Error('服务器未返回任务ID');g.job={state:'queued',promptId:response.prompt_id};preview.watch(response.prompt_id);persist();render();log(`当前组已通过ComfyUI运行按钮提交：${response.prompt_id}；结果将自动更新。`);
    const queuedPageId=project.pageId;void waitJob(response.prompt_id).then(history=>{if(disposed||g.job?.promptId!==response.prompt_id)return;g.job.state=history.status?.status_str==='success'?'done':'error';g.job.videos=resultVideos(history);g.job.originalVideos=originalVideos(history);persist();if(project.pageId===queuedPageId){render();if(g.job.videos[0])preview.video(view({...g.job.videos[0],type:'output'}),'当前组视频已完成，可播放声音');}}).catch(error=>{if(!disposed)log('结果自动查询中断：'+error.message+'；可点击查询已提交任务。');});return response;
   }finally{setBusy(false);}
- },refresh(){try{workspace=readWorkspace(widget.value);project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;syncSettings();render();}catch(error){log('工程数据错误：'+error.message);}},dispose(){if(expanded)toggleExpanded(false);disposed=true;stop=true;updater.dispose();window.removeEventListener('h3-plugin-update-state',updateStateChanged);batchController.dispose();progressTracker.dispose();downloader.dispose();dependencyController.dispose();finishingController.dispose();resourceEditor.dispose();commonResourceEditor.dispose();preview.dispose();document.removeEventListener('keydown',escape);placeholder?.remove();host.remove();}};states.set(node,state);render();setTimeout(()=>{if(!disposed)void batchController.query({discover:true});},0);
+ },refresh(){try{workspace=readWorkspace(widget.value);project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;syncSettings();render();}catch(error){log('工程数据错误：'+error.message);}},dispose(){if(expanded)toggleExpanded(false);disposed=true;stop=true;updater.dispose();window.removeEventListener('h3-plugin-update-state',updateStateChanged);batchController.dispose();progressTracker.dispose();downloader.dispose();proxyController.dispose();dependencyController.dispose();finishingController.dispose();resourceEditor.dispose();commonResourceEditor.dispose();preview.dispose();document.removeEventListener('keydown',escape);placeholder?.remove();host.remove();}};states.set(node,state);render();setTimeout(()=>{if(!disposed)void batchController.query({discover:true});},0);
 }
 app.registerExtension({name:'H3.Visual.Studio.Official',setup(){
  const send=api.queuePrompt.bind(api);
