@@ -4,7 +4,7 @@ import time
 from collections import deque
 import urllib.error, urllib.parse, socket, errno, http.client, ssl
 import re, json, threading, concurrent.futures, urllib.request, hashlib, os, shutil
-BACKEND_VERSION = "0.5.11"
+BACKEND_VERSION = "0.5.12"
 CATALOG_PATH = Path(__file__).parent / "model-catalog.json"
 DMAD_MODEL = {
     "key": "models/loras/dmad_minimax_h3_4step_full_critic_comfyui.safetensors",

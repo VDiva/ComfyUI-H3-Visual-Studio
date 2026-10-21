@@ -10,7 +10,7 @@ export function modelDownloader({api,container,log,recheck}){
  async function start(keys){try{const response=await api.fetchApi('/h3_visual_studio/models/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keys})});const data=await response.json();if(!response.ok)throw Error(data.error||'下载启动失败');log('云端已开始顺序下载，完成后会重新检查模型。');await refresh();}catch(error){log(error.message);}}
  function paint(data){
   container.replaceChildren();
-  const backend=document.createElement('div');backend.textContent='下载组件0.5.11 · '+(sourceLabels[data.source_mode]||sourceLabels.auto)+' · 后台版本：'+(data.backend_version||'旧版（未返回版本号）')+' · 已收录'+data.catalog.length+'个模型';container.append(backend);
+  const backend=document.createElement('div');backend.textContent='下载组件0.5.12 · '+(sourceLabels[data.source_mode]||sourceLabels.auto)+' · 后台版本：'+(data.backend_version||'旧版（未返回版本号）')+' · 已收录'+data.catalog.length+'个模型';container.append(backend);
   const toolbar=document.createElement('div');toolbar.style.cssText='display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0';
   const refreshButton=document.createElement('button');refreshButton.textContent='刷新下载进度';refreshButton.onclick=()=>refresh();toolbar.append(refreshButton);
   const stopAll=document.createElement('button');stopAll.textContent='停止全部下载';stopAll.disabled=!Object.values(data.jobs).some(j=>active(j)&&j.state!=='stopping');stopAll.onclick=()=>stop();toolbar.append(stopAll);

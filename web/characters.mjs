@@ -1,4 +1,4 @@
-import {modelChoices,modelReport,assertModels} from './model-check.mjs?v=0.15.5';
+import {modelChoices,modelReport,assertModels} from './model-check.mjs?v=0.15.6';
 export const defaultImageSettings=()=>({engine:'qwen_image_2_1',model:'qwen_image_2.1_turbo_int8_convrot.safetensors',clip:'qwen3vl_8b_w4a8.safetensors',vae:'qwen_image_2.1_vae_bf16.safetensors',width:768,height:1024,steps:8,seed:666,sampler:'euler',scheduler:'simple',cfg:1,cacheDevice:'auto',cacheDtype:'default',negativePrompt:'',
  style:'日本电视动画番剧角色设定图，清晰线稿，赛璐璐上色，人物身份与服装细节清楚，单个人物，全身或四分之三身，正面自然站姿，简洁中性灰背景。不要文字、水印、字幕、分镜拼贴或其他人物。'});
 export function normalizeImageSettings(raw={}){

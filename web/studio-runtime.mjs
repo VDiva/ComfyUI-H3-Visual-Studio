@@ -1,26 +1,26 @@
-import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.5';
-import {mountProxyCore} from './proxy-core.mjs?v=0.15.5';
-import {backgroundBatch} from './background-batch.mjs?v=0.15.5';
-import {generationSummary} from './generation-summary.mjs?v=0.15.5';
-import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.5';
-import {openVideoCompare} from './video-compare.mjs?v=0.15.5';
-import {mountDependencies} from './dependencies.mjs?v=0.15.5';
-import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.5';
-import {mountSelfLift} from './selflift.mjs?v=0.15.5';
-import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.5';
-import {executionProgress} from './execution-progress.mjs?v=0.15.5';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.5';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.15.5';
-import {openFolderTemplate} from './folder-template.mjs?v=0.15.5';
-import {livePreview} from './live-preview.mjs?v=0.15.5';
-import {modelDownloader} from './model-download.mjs?v=0.15.5';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.5';
-import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.5';
+import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.6';
+import {mountProxyCore} from './proxy-core.mjs?v=0.15.6';
+import {backgroundBatch} from './background-batch.mjs?v=0.15.6';
+import {generationSummary} from './generation-summary.mjs?v=0.15.6';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.6';
+import {openVideoCompare} from './video-compare.mjs?v=0.15.6';
+import {mountDependencies} from './dependencies.mjs?v=0.15.6';
+import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.6';
+import {mountSelfLift} from './selflift.mjs?v=0.15.6';
+import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.6';
+import {executionProgress} from './execution-progress.mjs?v=0.15.6';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.6';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.15.6';
+import {openFolderTemplate} from './folder-template.mjs?v=0.15.6';
+import {livePreview} from './live-preview.mjs?v=0.15.6';
+import {modelDownloader} from './model-download.mjs?v=0.15.6';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.6';
+import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.6';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.5';
-import './folder-core.js?v=0.15.5';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.5';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.6';
+import './folder-core.js?v=0.15.6';
+import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.6';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -52,7 +52,7 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.5</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.6</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组导演台API</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>

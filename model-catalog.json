@@ -1,5 +1,32 @@
 [
   {
+    "key": "models/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+    "category": "diffusion_models",
+    "name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+    "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+    "source": "https://huggingface.co/Comfy-Org/MiniMax-H3",
+    "size": 20970379616,
+    "sha256": "e889202c41dafb67b10d67b97f0d8541508036a6090af23425a5c2615d03c47a"
+  },
+  {
+    "key": "models/diffusion_models/minimax_h3_ref2va_pruned_w4a8_mixed.safetensors",
+    "category": "diffusion_models",
+    "name": "minimax_h3_ref2va_pruned_w4a8_mixed.safetensors",
+    "url": "https://huggingface.co/Kijai/MiniMax-H3-experimental/resolve/main/minimax_h3_ref2va_pruned_w4a8_mixed.safetensors",
+    "source": "https://huggingface.co/Kijai/MiniMax-H3-experimental",
+    "size": 11770657048,
+    "sha256": "de2c6c29c4ee702b45e48e40daae3834aeee58ab681c732d9152589a87c89910"
+  },
+  {
+    "key": "models/loras/minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors",
+    "category": "loras",
+    "name": "minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors",
+    "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/loras/minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors",
+    "source": "https://huggingface.co/Comfy-Org/MiniMax-H3",
+    "size": 1956192992,
+    "sha256": "c396a9a06f58399e9df9754b18299818d84a2ddd371724ba48fe4a41221437dc"
+  },
+  {
     "key": "models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors",
     "category": "latent_upscale_models",
     "name": "minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors",
