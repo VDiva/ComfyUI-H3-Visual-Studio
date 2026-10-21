@@ -1,6 +1,7 @@
 import {attentionModel} from './director-recipe.mjs?v=0.9.0';
 import {MEGAPIXELS} from './resolution.mjs?v=0.7.1';
 import {modelReport,assertModels,modelChoices} from './model-check.mjs?v=0.7.1';
+export const FINISH_MEGAPIXELS=Array.from({length:40},(_,i)=>(i+1)/10);
 export const LATENT_MODEL='minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors';
 export const defaultFinishing=()=>({defaultsVersion:1,refine:true,steps:4,denoise:0.15,passes:1,upscale:'latent',megapixels:1,model:'RealESRGAN_x4.pth',latentModel:LATENT_MODEL,chunking:true});
 export function finishingSettings(raw={}){
@@ -9,11 +10,21 @@ export function finishingSettings(raw={}){
  if(s.scheduler&&!['inherit','simple','beta'].includes(s.scheduler))throw Error('二采调度请选择inherit/simple/beta');
  if(s.upscale==='latent'&&(!s.latentModel||typeof s.latentModel!=='string'))throw Error('请下载并选择H3 3D latent放大模型');
  if(!Number.isInteger(s.steps)||s.steps<1||s.steps>30||!Number.isInteger(s.passes)||s.passes<1||s.passes>3||!Number.isFinite(s.denoise)||s.denoise<0.01||s.denoise>0.5)throw Error('精修步数1—30、次数1—3、强度0.01—0.5');
- if(!MEGAPIXELS.includes(s.megapixels))throw Error('精修目标须为0.1—2.0 MP，每0.1一档');
+ if(!FINISH_MEGAPIXELS.includes(s.megapixels))throw Error('精修目标须为0.1—4.0 MP，每0.1一档');
  if(s.upscale==='model'&&(!s.model||typeof s.model!=='string'))throw Error('请到“视频精修与放大”点击“下载超分模型”，安装后刷新并选择已安装的模型（models/upscale_models）');
  return s;
 }
 export function targetCanvas(width,height,mp){const ratio=width/height;return {width:Math.round(Math.sqrt(mp*1e6*ratio)/32)*32,height:Math.round(Math.sqrt(mp*1e6/ratio)/32)*32};}
+// MP is pixel area, not a multiplier of each edge.
+export function syncFinishingResolution(project,sourceMP){
+ const s={...defaultFinishing(),...project.finishing};
+ if(s.upscale==='off')return false;
+ const mp=sourceMP??MEGAPIXELS.reduce((a,b)=>Math.abs(b-project.settings.width*project.settings.height/1e6)<Math.abs(a-project.settings.width*project.settings.height/1e6)?b:a);
+ if(!MEGAPIXELS.includes(mp))throw Error('一采目标须为0.1—2.0 MP');
+ const next=Number((mp*2).toFixed(1));
+ if(s.megapixels===next)return false;
+ project.finishing={...s,megapixels:next};return true;
+}
 // Independent stock-node composition inspired by Director's separation of refine and upscale.
 // Refinement stays on the original H3 canvas. Audio always uses the first pass.
 export function finishApi(prompt,raw,width,height){
@@ -90,7 +101,7 @@ function statusText(job){if(!job)return '尚无处理任务';const states={queue
 export function mountFinishing({container,api,getProject,getGroup,persist,preview,view,log,isBusy,setBusy,openModelDownloads,onQueued=()=>{},onFinished=()=>{},onSettingsChanged=()=>{}}){
  const doc=container.ownerDocument;container.innerHTML=`<div class="library"><div class="title">生成时精修与放大</div><p class="muted">Director方式：H3 3D latent放大，再在目标尺寸二采；关闭二采则只做latent放大。保留一采原片和原声音轨；新设置只作用于后续生成。二采可能改变脸部、动作或口型，超分需对比闪烁。</p><div class="row"><label><input id="finish-refine" type="checkbox">开启H3二次采样</label><label>步数 <input id="finish-steps" type="number" min="1" max="30"></label><label>强度 <input id="finish-denoise" type="number" min="0.01" max="0.5" step="0.01"></label><label>次数 <input id="finish-passes" type="number" min="1" max="3"></label></div><div class="row"><label>放大方式 <select id="finish-upscale"><option value="off">关闭</option><option value="lanczos">Lanczos插值（非AI）</option><option value="model">RealESRGAN逐帧超分</option><option value="latent">Director · H3 3D latent放大</option></select></label><label>目标MP（原画幅比例） <select id="finish-mp"></select></label><label>超分模型 <select id="finish-model"><option value="">请刷新模型列表</option></select></label><button id="finish-model-refresh">刷新已安装超分模型</button><button id="finish-model-download">下载超分模型</button><a id="finish-model-link" href="https://huggingface.co/ai-forever/Real-ESRGAN/resolve/main/RealESRGAN_x4.pth" target="_blank" rel="noopener noreferrer">模型文件直链</a></div><div class="row"><label>H3 latent模型 <select id="finish-latent-model"></select></label><label><input id="finish-chunking" type="checkbox">latent时间分块（省显存）</label><button id="finish-director">使用Director方式（放大后二采）</button></div><p id="finish-size" class="muted"></p></div><div class="library"><div class="title">已生成视频处理</div><p class="muted">对已有成片做轻降噪、Lanczos放大和轻锐化，另存新文件。“普通处理”为非AI；“RealESRGAN超分”使用上方图像超分模型和下方目标MP。H3 latent方式用于新生成，已有成片不含原始latent。两者均保留原声音和帧率，不补帧。</p><div class="row"><label>源视频 <select id="post-source"></select></label><label>目标MP <select id="post-mp"></select></label><label>降噪 <select id="post-denoise"><option value="off">关闭</option><option value="light" selected>轻度</option><option value="medium">中度</option></select></label><label>锐化 <select id="post-sharpen"><option value="off">关闭</option><option value="light" selected>轻度</option></select></label></div><div class="row"><button id="post-start">普通处理</button><button id="post-ai">RealESRGAN超分已有视频</button><button id="post-query">查询后台处理</button><button id="post-cancel">取消当前处理</button><button id="post-original">预览所选原片</button><button id="post-result">预览处理结果</button></div><pre id="post-status" class="status">尚无处理任务</pre></div>`;
  const $=id=>container.querySelector('#'+id);let sources=[],timer=null,disposed=false;
- for(const id of ['finish-mp','post-mp'])for(const n of MEGAPIXELS){const o=doc.createElement('option');o.value=n;o.textContent=n.toFixed(1);$(id).append(o);}$('post-mp').value='1';
+ for(const id of ['finish-mp','post-mp'])for(const n of (id==='finish-mp'?FINISH_MEGAPIXELS:MEGAPIXELS)){const o=doc.createElement('option');o.value=n;o.textContent=n.toFixed(1);$(id).append(o);}$('post-mp').value='1';
  const bindings={refine:'finish-refine',steps:'finish-steps',denoise:'finish-denoise',passes:'finish-passes',upscale:'finish-upscale',megapixels:'finish-mp',model:'finish-model',latentModel:'finish-latent-model',chunking:'finish-chunking'};
  for(const [key,id] of Object.entries(bindings))$(id).onchange=()=>{const p=getProject();p.finishing={...defaultFinishing(),...p.finishing,[key]:['refine','chunking'].includes(key)?$(id).checked:['steps','denoise','passes','megapixels'].includes(key)?Number($(id).value):$(id).value};persist();sync();};
  async function models(){try{for(const [type,field,id] of [['UpscaleModelLoader','model_name','finish-model'],['H3DirectorLatentUpscale','model_name','finish-latent-model']]){const r=await api.fetchApi('/object_info/'+type);if(!r.ok)throw Error('无法读取'+type+'模型列表，请更新完整插件并重启');const data=await r.json(),choices=modelChoices(data[type],field);if(!Array.isArray(choices))throw Error('缺少'+type+'接口，请更新插件和ComfyUI');$(id).replaceChildren();const blank=doc.createElement('option');blank.value='';blank.textContent=choices.length?'请选择模型':'未安装，请点击下载超分模型';$(id).append(blank);for(const v of choices.filter(v=>!v.startsWith('('))){const o=doc.createElement('option');o.value=v;o.textContent=v;$(id).append(o);}}const s={...defaultFinishing(),...getProject().finishing};for(const [key,id] of [['model','finish-model'],['latentModel','finish-latent-model']])if(Array.from($(id).options).some(o=>o.value===s[key]))$(id).value=s[key];}catch(e){log(e.message);}}

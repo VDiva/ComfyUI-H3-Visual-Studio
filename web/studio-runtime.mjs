@@ -1,11 +1,11 @@
 import {mountDependencies} from './dependencies.mjs?v=0.10.0';
 import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.9.0';
 import {mountSelfLift,selfLiftApi} from './selflift.mjs?v=0.9.1';
-import {mountFinishing,finishApi} from './finishing.mjs?v=0.9.0';
+import {mountFinishing,finishApi,syncFinishingResolution} from './finishing.mjs?v=0.10.3';
 import {executionProgress} from './execution-progress.mjs?v=0.8.0';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.5.10';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.10.3';
 import {attachResourceEditor} from './resource-editor.mjs?v=0.5.8';
-import {openFolderTemplate} from './folder-template.mjs?v=0.5.8';
+import {openFolderTemplate} from './folder-template.mjs?v=0.10.1';
 import {livePreview} from './live-preview.mjs?v=0.5.8';
 import {modelDownloader} from './model-download.mjs?v=0.5.8';
 import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.8.0';
@@ -13,7 +13,7 @@ import {ACCELERATION_MODES,accelerateApi,accelerateWorkflow,effectiveVideoSettin
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
 import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.5.8';
-import './folder-core.js?v=0.5.8';
+import './folder-core.js?v=0.10.1';
 import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.9.1';
 import {buildOfficialImport,verifyOfficialImport} from './official-import.mjs?v=0.5.8';
 
@@ -147,7 +147,7 @@ function attach(node){
   input.oninput=()=>{project.imageSettings[key]=input.type==='number'?Number(input.value):input.value;persist();updateBinding();};label.append(input);$('image-settings').append(label);
  }
  const imageResolution=mountResolution({container:$('image-settings'),getSettings:()=>project.imageSettings,onChange:()=>{persist();updateBinding();},step:16,id:'image-resolution'});
- const videoResolution=mountResolution({container:$('settings'),getSettings:()=>project.settings,onChange:()=>{persist();updateBinding();$('resolution-guide').textContent=resolutionGuide(project.settings);},id:'video-resolution'});
+ const videoResolution=mountResolution({container:$('settings'),getSettings:()=>project.settings,onChange:mp=>{const raised=syncFinishingResolution(project,mp);finishingController.sync();persist();updateBinding();if(raised)log('已同步二采放大目标为 '+project.finishing.megapixels+' MP（一采MP的2倍）。');$('resolution-guide').textContent=resolutionGuide(project.settings);},id:'video-resolution'});
  $('image-style').oninput=()=>{project.imageSettings.style=$('image-style').value;persist();updateBinding();};
  $('mode').onchange=()=>{project.mode=$('mode').value;if(project.mode==='auto_character'&&!project.characters.length)project.characters=discoverCharacters(project);persist();render();};
  $('extract-characters').onclick=()=>{const found=discoverCharacters(project);for(const c of found)if(!project.characters.some(v=>v.id===c.id))project.characters.push(c);persist();render();log(found.length?`识别到${found.length}个人物，请核对外貌设定。`:'未识别到人物名/S编号，请添加人物并填写外貌设定。');};

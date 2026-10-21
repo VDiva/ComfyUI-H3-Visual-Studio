@@ -20,7 +20,7 @@ export function mountResolution({container,getSettings,onChange,step=32,id='vide
  }
  function change(){const s=getSettings();let a=aspect.value;if(a==='legacy'){const ratio=s.width/s.height;a=ASPECTS.reduce((best,v)=>{const [x,y]=v.split(':').map(Number);const [bx,by]=best.split(':').map(Number);return Math.abs(Math.log(x/y/ratio))<Math.abs(Math.log(bx/by/ratio))?v:best;},ASPECTS[0]);}
  const n=mp.value==='legacy'?MEGAPIXELS.reduce((best,v)=>Math.abs(v-s.width*s.height/1e6)<Math.abs(best-s.width*s.height/1e6)?v:best,0.4):Number(mp.value);
- Object.assign(s,resolutionFor(n,a,step));onChange();sync();}
+ Object.assign(s,resolutionFor(n,a,step));onChange(n);sync();}
  mp.onchange=change;aspect.onchange=change;sync();return {sync};
 }
 export function resolutionGuide(s,step=32){

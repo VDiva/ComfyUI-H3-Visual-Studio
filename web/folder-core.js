@@ -24,11 +24,20 @@
         }
       }
       const gi = parts.findIndex(x => /^素材组\d+$/.test(x));
-      if (/^素材(?:组)?索引\.md$/i.test(parts.at(-1))) {
+      if (/^(?:素材(?:组)?|提示词)索引\.md$/i.test(parts.at(-1))) {
         const parent=parts.slice(0,-1).join('/');
         const text=(await file.text()).replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n');
-        if(indexes.has(parent)&&indexes.get(parent)!==text)throw Error(`${parent}：素材索引.md与素材组索引.md内容不同，请保留一份明确的时长索引`);
+        if(indexes.has(parent)&&indexes.get(parent)!==text)throw Error(`${parent}：同目录的时长索引内容不同，请保留一份明确的时长索引`);
         indexes.set(parent,text);
+      }
+      const flat = parts.at(-1).match(/^提示词([1-9]\d*)?\.txt$/i);
+      if (gi < 1 && flat && parts.length > 1) {
+        const chapter=parts.slice(0,-1).join('/');
+        const number=Number(flat[1]||1), key=`${chapter}/素材组${number}`;
+        if (!groups.has(key)) groups.set(key,{chapter,number,images:[],audios:[],videos:[],prompts:[]});
+        const group=groups.get(key);
+        if(group.layout==='nested')throw Error(`${chapter}：请勿混用平铺提示词与素材组目录`);
+        group.layout='flat';group.prompts.push(file);continue;
       }
       if (gi < 1) continue;
       const chapter = parts.slice(0,gi).join('/');
@@ -36,6 +45,8 @@
       const key = `${chapter}/素材组${number}`;
       if (!groups.has(key)) groups.set(key, {chapter, number, images:[], audios:[], videos:[], prompts:[]});
       const group = groups.get(key);
+      if(group.layout==='flat')throw Error(`${chapter}：请勿混用平铺提示词与素材组目录`);
+      group.layout='nested';
       if (parts.length === gi+2 && parts.at(-1) === '提示词.txt') group.prompts.push(file);
       if (parts.length === gi+3 && parts[gi+1] === '参考图' && /^@图片\d+\.(png|jpe?g|webp)$/i.test(file.name)) group.images.push(file);
       if (parts.length === gi+3 && parts[gi+1] === '参考音频' && /^@音频\d+\.(wav|mp3|flac|ogg|m4a|aac)$/i.test(file.name)) group.audios.push(file);
@@ -50,7 +61,7 @@
     }
     const chapters = new Map();
     for (const group of groups.values()) {
-      if (group.prompts.length !== 1) throw Error(`${group.chapter}/素材组${group.number}：需要唯一的提示词.txt`);
+      if (group.prompts.length !== 1) throw Error(`${group.chapter}/素材组${group.number}：每段需要唯一的提示词文件，请勿同时放提示词.txt与提示词1.txt`);
       group.prompt = (await group.prompts[0].text()).replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim();
       if (!group.prompt) throw Error(`素材组${group.number}的提示词为空`);
       group.images.sort((a,b)=>numeric(a.name,b.name));
@@ -84,19 +95,20 @@
           break;
         }
       }
-      const row = (indexText||'').split(/\r?\n/).find(line=>new RegExp(`^\\|\\s*素材组${group.number}\\s*\\|`).test(line));
+      const row = (indexText||'').split(/\r?\n/).find(line=>new RegExp(`^\\|\\s*(?:素材组|分段|提示词)${group.number}\\s*\\|`).test(line));
       group.seconds = row ? Number(row.split('|')[2].trim()) : NaN;
       group.timeSource = row ? '素材组索引' : '提示词末时点';
       if (!row) {
         const ends = [...group.prompt.matchAll(/\d+(?:\.\d+)?\s*[～~–—-]\s*(\d+(?:\.\d+)?)\s*秒/g)].map(m=>Number(m[1]));
         group.seconds = ends.length ? Math.max(...ends) : NaN;
       }
-      if (!Number.isFinite(group.seconds)||group.seconds<0.2||group.seconds>20.7) throw Error(`素材组${group.number}：无法识别0.2—20.7秒内的时长，请补齐素材组索引.md`);
+      if (!Number.isFinite(group.seconds)||group.seconds<0.2||group.seconds>20.7) throw Error(`素材组${group.number}：无法识别0.2—20.7秒内的时长，请补齐提示词索引.md`);
       if (!chapters.has(group.chapter)) chapters.set(group.chapter,[]);
       chapters.get(group.chapter).push(group);
     }
-    if (!chapters.size) throw Error('未找到素材组。请选择包含“素材组1/提示词.txt”和“公共参考图”的章节目录。');
+    if (!chapters.size) throw Error('未找到提示词。请选择包含“提示词.txt”或“提示词1.txt、提示词2.txt”的上传目录或外层章节目录。');
     return [...chapters.entries()].sort((a,b)=>numeric(a[0],b[0])).map(([name,groups])=>{
+      if(new Set(groups.map(g=>g.layout)).size>1)throw Error(`${name}：请勿混用平铺提示词与素材组目录`);
       groups.sort((a,b)=>a.number-b.number);
       groups.forEach((g,i)=>{if(g.number!==i+1) throw Error(`${name}：素材组必须从1连续编号`);});
       const sharedImages=libraries.get(name);

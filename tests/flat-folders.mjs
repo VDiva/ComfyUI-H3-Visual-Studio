@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import '../web/folder-core.js';
+const file=(path,text='0～4秒：人物走动。')=>({name:path.split('/').at(-1),webkitRelativePath:path,text:async()=>text});
+const parse=files=>H3FolderCore.parseFiles(files,{allowNoImages:true});
+let pages=await parse([file('章/页2/提示词.txt'),file('章/页1/提示词2.txt'),file('章/页1/提示词1.txt'),file('章/页1/提示词索引.md','|分段1|3|提示词1.txt|\n|分段2|6|提示词2.txt|')]);
+assert.equal(pages.length,2);assert.deepEqual(pages[0].groups.map(g=>g.seconds),[3,6]);assert.equal(pages[1].groups[0].seconds,4);
+await assert.rejects(parse([file('页/提示词.txt'),file('页/提示词1.txt')]),/唯一/);
+await assert.rejects(parse([file('页/提示词1.txt'),file('页/素材组2/提示词.txt')]),/混用/);
+await assert.rejects(parse([file('页/提示词2.txt')]),/连续/);
+const image=file('页/公共参考图/@图片1.png','');
+pages=await H3FolderCore.parseFiles([file('页/提示词1.txt','<Picture 1> 0～4秒：走动。'),file('页/提示词2.txt'),image]);
+assert.equal(pages[0].sharedImages[0],image);assert.equal(pages[0].groups.length,2);
+await assert.rejects(parse([file('页/提示词.txt','<Audio 1> 0～4秒：说话。')]),/声音参考缺失/);
+assert.equal((await parse([file('旧页/素材组1/提示词.txt')]))[0].groups.length,1);
+console.log('PASS flat single/multiple pages, index and timeline durations, ordering, shared images, duplicate/mixed/gap rejection, audio validation and old import');
