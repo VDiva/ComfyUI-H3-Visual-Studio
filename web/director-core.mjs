@@ -1,5 +1,5 @@
-import {compileDialogue} from './dialogue.mjs?v=0.15.26';
-import {finishingSettings,finishingCanvas} from './finishing.mjs?v=0.15.26';
+import {compileDialogue} from './dialogue.mjs?v=0.15.27';
+import {finishingSettings,finishingCanvas} from './finishing.mjs?v=0.15.27';
 
 // Compile Studio projects to the bundled Director executor, keeping the selected
 // model/LoRA graph as the source of truth. No upstream timeline UI is required.
