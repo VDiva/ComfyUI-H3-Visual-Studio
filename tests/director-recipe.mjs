@@ -6,7 +6,7 @@ import {modelReport} from '../web/model-check.mjs';
 const base=JSON.parse(fs.readFileSync(new URL('./.fixtures/官方采样API基线.json',import.meta.url)));
 const nodes=(p,t)=>Object.values(p).filter(n=>n.class_type===t);
 for(const exact of [false,true]){
- const project=applyDirectorPreset(defaultProject(),exact);const g={id:'g',number:1,seconds:2,prompt:'人物在夜间站立，无对白。'};
+ const project=applyDirectorPreset(defaultProject(),exact);project.autoMerge=false;const g={id:'g',number:1,seconds:2,prompt:'人物在夜间站立，无对白。'};
  const p=compileRequest(base,project,g).prompt;
  assert.equal(project.selflift.enabled,false);assert.equal(nodes(p,'H3StudioDirector').length,1);assert.equal(nodes(p,'H3SelfLiftSampler').length,0);assert.equal(nodes(p,'SaveVideo').length,2);
  assert.equal(nodes(p,'H3StudioDirector')[0].inputs.steps,8);assert.equal(nodes(p,'H3StudioDirector')[0].inputs.sampler,'res_multistep');assert.equal(p['145'].inputs.lora_name,TURBO8);

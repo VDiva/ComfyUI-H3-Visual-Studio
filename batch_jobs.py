@@ -16,7 +16,7 @@ def videos(history):
                     row={**row,"type":"output"}
                     if row not in rows: rows.append(row)
     def original(row):
-        return any(part.endswith("_original") for part in (row.get("subfolder","")+"/"+row["filename"]).replace("\\","/").split("/"))
+        return any(part.endswith('_original') for part in row.get('subfolder','').replace('\\','/').split('/')) or bool(re.search(r'_original(?:_\d+_?)?\.[^.]+$',row['filename'],re.I))
     return [r for r in rows if not original(r)],[r for r in rows if original(r)]
 
 
@@ -72,8 +72,8 @@ class BatchJobs:
             group=item.get("groupId")
             if not isinstance(group,str) or not group or group in ids: raise ValueError("分段ID缺失或重复")
             ids.add(group)
-            clean.append({"groupId":group,"label":str(item.get("label",group))[:200],"prompt":copy.deepcopy(item["prompt"]),"workflow":copy.deepcopy(item.get("workflow",{})),"state":"pending"})
-        job={"id":key,"pageId":page_id,"created":time.time(),"state":"queued","stop":False,"autoMerge":bool(payload.get("autoMerge")),"clientId":client_id,"items":clean}
+            clean.append({"groupId":group,"label":str(item.get("label",group))[:200],"prompt":copy.deepcopy(item["prompt"]),"workflow":copy.deepcopy(item.get("workflow",{})),"groupIds":[g for g in item.get("groupIds",[]) if isinstance(g,str)],"state":"pending"})
+        job={"id":key,"pageId":page_id,"created":time.time(),"state":"queued","stop":False,"autoMerge":payload.get("autoMerge",True) is not False,"combinedOutput":bool(payload.get("combinedOutput")),"clientId":client_id,"items":clean}
         self.jobs[key]=job;self.save(job);self.launch(job)
         return self.status(key)
 
@@ -94,6 +94,13 @@ class BatchJobs:
         if any(i["state"]=="submitting" and not i.get("promptId") for i in job["items"]): raise ValueError("有任务提交结果不确定，请先检查ComfyUI队列，停止此批次后重新选择剩余分段，避免重复生成")
         job["stop"]=False;job["state"]="queued";job.pop("error",None);self.save(job);self.launch(job)
         return self.status(key)
+
+    def retry_merge(self,key):
+        job=self.jobs.get(key)
+        if not job or job['state'] not in ('error','done','paused') or len(job['items'])<2 or not all(i['state']=='done' for i in job['items']):
+            raise ValueError('仅可重试全部分段已完成的批次合并，不会重新生成')
+        job.update(autoMerge=True,stop=False,state='queued');job.pop('error',None)
+        self.save(job);self.launch(job);return self.status(key)
 
     async def run(self,job):
         try:
@@ -131,11 +138,16 @@ class BatchJobs:
             if not job["stop"] and job["autoMerge"] and len(job["items"])>1:
                 clips=[]
                 for item in job["items"]:
+                    item['videos'],item['originalVideos']=videos({'outputs':{'saved':{'videos':item.get('videos',[])+item.get('originalVideos',[])}}})
                     if len(item.get("videos",[]))!=1: raise ValueError("成片不唯一，无法自动合并")
                     clips.extend(item["videos"])
                 if not self.merge: raise ValueError("服务器没有合并接口")
                 job["state"]="merging";self.save(job)
                 job["mergedVideo"]=await self.merge(clips)
+            if job.get('combinedOutput') and len(job['items'])==1:
+                results=job['items'][0].get('videos',[])
+                if len(results)!=1:raise ValueError('导演台多段输出未返回唯一成片')
+                job['mergedVideo']=results[0]
             job["state"]="stopped" if job["stop"] else "done"
         except asyncio.CancelledError:
             job["state"]="paused";job["error"]="服务中断，可恢复查询已提交任务"

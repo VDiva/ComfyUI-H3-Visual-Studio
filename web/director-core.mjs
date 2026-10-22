@@ -1,5 +1,5 @@
-import {compileDialogue} from './dialogue.mjs?v=0.15.27';
-import {finishingSettings,finishingCanvas} from './finishing.mjs?v=0.15.27';
+import {compileDialogue} from './dialogue.mjs?v=0.15.30';
+import {finishingSettings,finishingCanvas} from './finishing.mjs?v=0.15.30';
 
 // Compile Studio projects to the bundled Director executor, keeping the selected
 // model/LoRA graph as the source of truth. No upstream timeline UI is required.
@@ -20,6 +20,14 @@ export function directorCoreRequest(prompt, project, plan, saveId) {
   const match=key.match(/^ref_(images|audios|videos)\.ref_(image|audio|video)_(\d+)$/);
   if(match)refs[match[2]+'_'+match[3]]=value;
  }
+ const endpoints=plan.endpoints;
+ let frameGroup=null;
+ if(endpoints){
+  if(plan.images.length||plan.audios.length||plan.videos.length)throw Error('首尾帧模式不叠加公共参考素材，请移除本组@素材引用后生成');
+  const frameInputs={prompt:plan.prompt,duration_sec:plan.length/24};
+  for(const [key,file] of Object.entries(endpoints))if(file)frameInputs[key]=add('LoadImage',{image:file});
+  frameGroup=add('H3StudioFrameGroup',frameInputs);
+ }
  const settings=project.settings,finish=finishingSettings(project.finishing);
  const inputs={model:shifted.inputs.model,video_vae:condition.inputs.vae,audio_vae:condition.inputs.audio_vae,clip:condition.inputs.clip,
   task_type:'r2v',global_prompt:plan.prompt,frame_rate:24,width:settings.width,height:settings.height,
@@ -28,6 +36,7 @@ export function directorCoreRequest(prompt, project, plan, saveId) {
   r2v_groups:add('H3StudioDirectorGroup',refs),steps:settings.steps,sampler:settings.sampler,scheduler:settings.scheduler,
   cfg:1,seed:settings.seed,shift_video:shifted.inputs.shift_video,shift_audio:shifted.inputs.shift_audio,
   clear_vram_between_segments:true,cache_name:''};
+ if(frameGroup){inputs.task_type='fl2v';delete inputs.r2v_groups;inputs.i2v_groups=frameGroup;}
  const hasFinish=finish.refine||finish.upscale!=='off';
  if(finish.refine||finish.upscale==='latent'){
   const target=finishingCanvas(settings.width,settings.height,finish);
@@ -66,10 +75,10 @@ export function directorCoreRequest(prompt, project, plan, saveId) {
   if(target.width<settings.width||target.height<settings.height)throw Error('放大目标小于原始尺寸，请提高目标MP');
   images=finish.upscale==='model'?add('H3FrameUpscale',{images,upscale_model:add('UpscaleModelLoader',{model_name:finish.model}),...target}):add('ImageScale',{image:images,upscale_method:'lanczos',...target,crop:'disabled'});
  }
- const save=prompt[saveId];
+ const save=prompt[saveId];if(project.autoMerge)save.inputs.filename_prefix='.h3-intermediate/'+save.inputs.filename_prefix;
  save.inputs.video=add('CreateVideo',{images,audio:[core[0],1],fps:24});
  const outputs=[saveId];
- if(hasFinish){
+ if(hasFinish&&!project.autoMerge){
   const original=add('CreateVideo',{images:[core[0],inputs.refine?6:0],audio:[core[0],1],fps:24});
   outputs.push(add('SaveVideo',{...save.inputs,video:original,filename_prefix:save.inputs.filename_prefix+'_original'})[0]);
  }

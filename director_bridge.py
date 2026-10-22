@@ -1,7 +1,7 @@
 from .director_core.nodes.director import MiniMaxH3Director
 from .director_core.nodes.director_refine import MiniMaxH3DirectorRefine
 from .director_core.nodes.director_selflift import MiniMaxH3DirectorSelfLift
-from .director_core.director.external_groups import pack_r2v_group
+from .director_core.director.external_groups import pack_r2v_group, pack_i2v_group
 
 
 def studio_schema(cls):
@@ -15,7 +15,7 @@ class H3StudioDirector(MiniMaxH3Director):
     def INPUT_TYPES(cls):
         schema = studio_schema(MiniMaxH3Director)
         schema.setdefault('optional', {})['dialogue'] = ('H3_STUDIO_DIALOGUE',)
-        schema['required']['task_type'] = (['r2v'], {'default': 'r2v'})
+        schema['required']['task_type'] = (['r2v', 'fl2v'], {'default': 'r2v'})
         return schema
 
 
@@ -62,5 +62,31 @@ class H3StudioDirectorGroup:
                               ref_videos=values('video')),)
 
 
+class H3StudioFrameGroup:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {'required':{'prompt':('STRING',{'multiline':True}),'duration_sec':('FLOAT',{'default':5.0,'min':0.2,'max':120.0})},'optional':{'first_frame':('IMAGE',),'last_frame':('IMAGE',)}}
+    RETURN_TYPES=('MMX_DIR_GROUP',)
+    FUNCTION='pack'
+    CATEGORY='MiniMax H3/Visual Studio'
+    def pack(self,prompt,duration_sec,first_frame=None,last_frame=None):
+        return (pack_i2v_group(prompt=prompt,duration_sec=duration_sec,first_frame=first_frame,last_frame=last_frame),)
+
+
+class H3StudioGroupsCombine:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {'required':{},'optional':{f'group_{i}':('MMX_DIR_GROUP',) for i in range(200)}}
+    RETURN_TYPES=('MMX_DIR_GROUP',)
+    FUNCTION='combine'
+    CATEGORY='MiniMax H3/Visual Studio'
+    def combine(self,**groups):
+        rows=[]
+        for key in sorted(groups,key=lambda k:int(k.rsplit('_',1)[1])):
+            value=groups[key]
+            rows.extend(value if isinstance(value,list) else [value])
+        return (rows,)
+
+
 NODE_CLASS_MAPPINGS = {cls.__name__: cls for cls in
-    (H3StudioDirector, H3StudioDirectorRefine, H3StudioDirectorSelfLift, H3StudioDirectorGroup)}
+    (H3StudioDirector, H3StudioDirectorRefine, H3StudioDirectorSelfLift, H3StudioDirectorGroup, H3StudioFrameGroup, H3StudioGroupsCombine)}

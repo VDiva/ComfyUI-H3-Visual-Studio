@@ -34,3 +34,23 @@ with tempfile.TemporaryDirectory() as temp,patch.object(m,'find_module',return_v
  except ValueError:pass
  assert (Path(temp)/'ComfyUI-KJNodes/__init__.py').read_text()==existing
 print('PASS dependency checks, platform/Torch compatibility, fixed pip allowlist, current interpreter, locked dependencies, duplicate queue, KJ archive and no-overwrite/path guards; no real installation performed')
+
+for key in ('qwen3_tts','exact_audio_lock'):
+ with tempfile.TemporaryDirectory() as temp:
+  archive=io.BytesIO()
+  with zipfile.ZipFile(archive,'w') as z:
+   z.writestr('repo/__init__.py','# node');z.writestr('repo/install.py','# installer');z.writestr('repo/requirements.txt','av>=14.2.0')
+  requests=[];runs=[]
+  def fetch(url,timeout):
+   requests.append(url);return io.BytesIO(json.dumps({'sha':'b'*40}).encode() if 'api.github.com' in url else archive.getvalue())
+  def execute(cmd,**kwargs):
+   runs.append((cmd,kwargs));return subprocess.CompletedProcess(cmd,0,'complete','')
+  manager=m.DependencyManager(temp,lambda:{},opener=fetch,proxy=lambda:'http://127.0.0.1:7890',env=lambda:env,runner=execute)
+  manager.start([key]);manager.pool.shutdown(wait=True)
+  target=Path(temp)/m.PACKAGES[key]['directory'];assert (target/'__init__.py').is_file();assert manager.jobs[key]['state']=='restart_required',manager.jobs
+  assert m.PACKAGES[key]['repo'] in requests[0] and requests[1].endswith('/'+'b'*40)
+  if key=='qwen3_tts':
+   cmd,options=runs[0];assert cmd==[sys.executable,str(target/'install.py')];assert options['cwd']==str(target);assert options['env']['QWEN3_TTS_SKIP_MODEL_DOWNLOAD']=='1';assert options['env']['HTTPS_PROXY']=='http://127.0.0.1:7890';assert len(runs)==1
+  else:assert '-r' in runs[0][0] and str(target/'requirements.txt') in runs[0][0] and '--constraint' in runs[0][0]
+  manager.jobs[key]={'state':'error'};requests.clear();manager.install(key);assert not requests;assert manager.jobs[key]['state']=='restart_required'
+print('PASS voice node pinned sources, isolated installer in final path, proxy forwarding, no duplicate model downloads, constrained ExactAudioLock deps and retry without overwrite')

@@ -1,7 +1,7 @@
 import asyncio,sys,tempfile,json
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from batch_jobs import BatchJobs
+from batch_jobs import BatchJobs, videos
 
 class Comfy:
  def __init__(self): self.submitted=[];self.history={};self.fail=False;self.payloads=[]
@@ -45,5 +45,13 @@ async def main():
   jobs.stop(job['id']);assert jobs.status(job['id'])['state']=='stopped'
  with tempfile.TemporaryDirectory() as temp:
   c=Comfy();jobs=BatchJobs(temp,c,interval=.001);job=jobs.start(payload());await until(lambda:len(c.submitted)==1);c.complete('1',False);await jobs.tasks[job['id']];assert len(c.submitted)==1;assert jobs.status(job['id'])['state']=='error'
+ with tempfile.TemporaryDirectory() as temp:
+  c=Comfy();jobs=BatchJobs(temp,c,interval=.001);data=payload();data['combinedOutput']=True;data['items']=data['items'][:1];data['items'][0]['groupIds']=[str(i) for i in range(8)]
+  job=jobs.start(data);await until(lambda:len(c.submitted)==1);c.complete('1');await jobs.tasks[job['id']]
+  result=jobs.status(job['id']);assert result['state']=='done';assert result['mergedVideo']['filename']=='1.mp4';assert len(result['items'][0]['groupIds'])==8;assert len(c.submitted)==1
+ print('PASS native combined output is persisted and mapped to all eight groups')
  print('PASS sequential background execution, idempotent start, originals, auto merge, persistence, stop, restart recovery, uncertain submission and failure halt')
 asyncio.run(main())
+actual={'outputs':{'a':{'videos':[{'filename':'group_001_original_00002_.mp4','subfolder':'video/H3_Visual/夜海争执'},{'filename':'group_001_00002_.mp4','subfolder':'video/H3_Visual/夜海争执'}]}}}
+assert len(videos(actual)[0])==1 and len(videos(actual)[1])==1
+print('PASS actual cloud original-file naming is separated before merge')

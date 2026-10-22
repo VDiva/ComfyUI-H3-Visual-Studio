@@ -9,7 +9,7 @@ PROJECT="ComfyUI-H3-Visual-Studio"
 STATE_FILE=".h3-update-state.json"
 MAX_ARCHIVE=512*1024**2
 MAX_UNPACKED=1536*1024**2
-REQUIRED=("__init__.py","version.json","web/studio-runtime.mjs","web/global-entry.js","web/execution-health.mjs","model-catalog.json",
+REQUIRED=("__init__.py","version.json","web/studio-runtime.mjs","web/global-entry.js","web/frame-settings.mjs","web/sequence.mjs","web/execution-health.mjs","model-catalog.json",
           "director_bridge.py","proxy_core.py","requirements.txt","web/project.mjs","web/director-core.mjs","web/proxy-core.mjs","web/workflow-template.mjs",
           "LICENSE","NOTICE","NOTICE-Director.md","director_core/LICENSE","director_core/__init__.py",
           "director_core/source-manifest.json","director_core/source-normalized-manifest.json",

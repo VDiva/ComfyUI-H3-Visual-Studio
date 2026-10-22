@@ -1,14 +1,14 @@
-import {defaultVoices} from './dialogue.mjs?v=0.15.27';
-import {applyDirectorPreset} from './director-recipe.mjs?v=0.15.27';
-import {directorCoreRequest} from './director-core.mjs?v=0.15.27';
-import {defaultSelfLift} from './selflift.mjs?v=0.15.27';
-import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.15.27';
-import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.15.27';
-import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.15.27';
+import {defaultVoices} from './dialogue.mjs?v=0.15.30';
+import {applyDirectorPreset} from './director-recipe.mjs?v=0.15.30';
+import {directorCoreRequest} from './director-core.mjs?v=0.15.30';
+import {defaultSelfLift} from './selflift.mjs?v=0.15.30';
+import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.15.30';
+import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.15.30';
+import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.15.30';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];
-export const defaultProject = () => applyDirectorPreset({version:1,name:'未命名项目',mode:'reference',autoMerge:false,finishing:{...defaultFinishing(),refine:false,upscale:'off'},selflift:defaultSelfLift(),characters:[],imageSettings:defaultImageSettings(),commonPrompt:'',audioReference:false,voiceSettings:defaultVoices(),
+export const defaultProject = () => applyDirectorPreset({version:1,name:'未命名项目',mode:'reference',autoMerge:true,mergeDefaultsVersion:1,finishing:{...defaultFinishing(),refine:false,upscale:'off'},selflift:defaultSelfLift(),characters:[],imageSettings:defaultImageSettings(),commonPrompt:'',audioReference:false,voiceSettings:defaultVoices(),
   settings:{width:864,height:480,steps:8,seed:666,sampler:'euler',scheduler:'simple',acceleration:'inherit'},
   media:{images:[],audios:[],videos:[]},groups:[]},true);
 export function readProject(raw) {
@@ -19,6 +19,7 @@ export function readProject(raw) {
   // Missing presets adopt the current default; explicit saved choices remain unchanged.
   const finishing={...base.finishing,...value.finishing};
   if(value.finishing&&value.finishing.defaultsVersion!==1)Object.assign(finishing,{defaultsVersion:1,refine:true,upscale:'latent',chunking:true,steps:4});
+  if(value.mergeDefaultsVersion!==1){result.autoMerge=true;result.mergeDefaultsVersion=1;}
   result.finishing=finishing;result.selflift={...defaultSelfLift(),enabled:false,...value.selflift};
   if(!['reference','auto_character'].includes(result.mode)||!Array.isArray(result.characters))throw Error('工作流模式或人物列表无效');
   accelerationMode(result.settings);
@@ -79,6 +80,7 @@ export function planGroup(project,group) {
     plan.mapping[tag]=mapping;plan[key]=wanted.map(id=>byId.get(id));
     prompt=prompt.replace(re,(_,a,b)=>`<${tag} ${mapping[Number(a||b)]}>`);
   }
+  if(group.frameMode==='fl2v'||group.firstFrame?.file||group.lastFrame?.file)plan.endpoints={first_frame:group.firstFrame?.file,last_frame:group.lastFrame?.file};
   plan.prompt=prompt;return plan;
 }
 const refKey = key => key!=='ref_image_size' && /^(?:ref_images|ref_audios|ref_videos|ref_video_audios)(?:\.|$)|^ref_(?:image|audio|video)_/.test(key);

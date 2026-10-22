@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from merge_video import stream_signature
 one="Stream #0:0: Video: h264 (High), yuv420p, 864x480, 1234 kb/s, 24 fps, 24 tbr, 12288 tbn"
 two="Stream #0:0: Video: h264 (High), yuv420p, 864x480, 875.5 kb/s, 23.99 fps, 24.01 tbr, 12288 tbn"

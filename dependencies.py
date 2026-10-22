@@ -2,6 +2,8 @@
 from pathlib import Path
 import importlib.util, importlib.metadata, sys, platform, subprocess, os, json, threading, concurrent.futures, tempfile, urllib.request, zipfile, io, shutil
 PACKAGES={
+ "qwen3_tts":{"label":"Qwen3-TTS配音节点与独立环境","node":"Qwen3TTSVoiceDesign","nodes":["Qwen3TTSVoiceDesign","Qwen3TTSVoiceClone"],"repo":"shinrali/ComfyUI-Qwen3-TTS","directory":"ComfyUI-Qwen3-TTS","reason":"声音设计、角色固定声线配音"},
+ "exact_audio_lock":{"label":"H3 ExactAudioLock对白锁定节点","node":"MiniMaxH3DialogueAudioLock","nodes":["MiniMaxH3DialogueAudioLock","MiniMaxH3DialogueAudioFinalize"],"repo":"badgids/ComfyUI-H3-ExactAudioLock","directory":"ComfyUI-H3-ExactAudioLock","reason":"正式配音对白时间锁定与音轨恢复"},
  "opencv":{"label":"Director视频读取","module":"cv2","pip":["opencv-python-headless>=4.8"],"reason":"导演台内核视频解码"},
  "scenedetect":{"label":"Director镜头分析","module":"scenedetect","pip":["scenedetect>=0.6.4,<0.8"],"reason":"导演台镜头分析"},
  "imageio_ffmpeg":{"label":"FFmpeg Python运行库","module":"imageio_ffmpeg","pip":["imageio-ffmpeg"],"reason":"FFmpeg备用执行文件"},
@@ -70,6 +72,8 @@ class DependencyManager:
   rows=[]
   for key,item in PACKAGES.items():
    installed=item.get('node') in self.nodes() if item.get('node') else find_module(item['module'])
+   if item.get('nodes'):installed=all(n in self.nodes() for n in item['nodes'])
+   if key=='qwen3_tts':installed=installed and any((self.root/item['directory']/p).is_file() for p in ('.venv/bin/python','.venv/Scripts/python.exe'))
    job=jobs.get(key,{})
    if job.get('state')=='error' and key!='kjnodes':installed=False
    blocked=sage_block(self.cached_env) if key=='sageattention' and not installed else ''
@@ -106,11 +110,48 @@ class DependencyManager:
   result=self.runner(cmd,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=1200,env=env,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
   self.update(key,log=((result.stdout or '')+'\n'+(result.stderr or ''))[-12000:])
   if result.returncode:raise ValueError('pip安装失败，详见安装日志；未自动升级Torch或编译GPU扩展')
+ def install_voice_node(self,key,work):
+  item=PACKAGES[key];target=self.root/item['directory']
+  if not target.exists():
+   with self.opener('https://api.github.com/repos/'+item['repo']+'/commits/main',timeout=60) as response:revision=json.load(response)['sha']
+   if not isinstance(revision,str) or len(revision)!=40 or any(c not in '0123456789abcdef' for c in revision):raise ValueError('节点版本信息无效')
+   self.update(key,log='正在下载固定版本节点：'+item['repo']+' @ '+revision)
+   with self.opener('https://codeload.github.com/'+item['repo']+'/zip/'+revision,timeout=60) as response:data=response.read(256*1024**2+1)
+   if len(data)>256*1024**2:raise ValueError('节点包过大')
+   stage=Path(work)/item['directory'];extract_repository(data,stage)
+   required='install.py' if key=='qwen3_tts' else 'requirements.txt'
+   if not (stage/'__init__.py').is_file() or not (stage/required).is_file():raise ValueError('节点包结构不完整')
+   self.root.mkdir(parents=True,exist_ok=True)
+   staging=self.root/('.h3-voice-'+key)
+   if staging.exists():raise ValueError('节点暂存目录已存在，请检查上次安装')
+   shutil.copytree(stage,staging)
+   try:
+    if target.exists():raise ValueError('安装期间节点目录已出现，未覆盖')
+    staging.rename(target)
+   finally:
+    if staging.exists() and staging.resolve().is_relative_to(self.root):shutil.rmtree(staging)
+  if key=='qwen3_tts':
+   installer=target/'install.py'
+   if not installer.is_file():raise ValueError('已有Qwen节点缺少install.py，请检查节点来源')
+   env=dict(os.environ);address=self.proxy()
+   if address:env.update(HTTP_PROXY=address,HTTPS_PROXY=address,http_proxy=address,https_proxy=address)
+   env['QWEN3_TTS_SKIP_MODEL_DOWNLOAD']='1'
+   self.update(key,log='正在安装Qwen独立环境，复用ComfyUI Torch；模型请在配音模型卡片下载…')
+   result=self.runner([sys.executable,str(installer)],cwd=str(target),env=env,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=2400,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+   self.update(key,log=((result.stdout or '')+'\n'+(result.stderr or ''))[-12000:])
+   if result.returncode:raise ValueError('Qwen独立环境安装失败，节点源码已保留，可重试安装；详见日志')
+  else:
+   requirements=target/'requirements.txt'
+   if not requirements.is_file():raise ValueError('已有ExactAudioLock节点缺少requirements.txt')
+   self.pip(key,['-r',str(requirements)],work)
+
  def install(self,key):
   self.update(key,state='installing',log='正在准备依赖…')
   try:
    with tempfile.TemporaryDirectory(prefix='h3-dependencies-') as work:
-    if key=='kjnodes':
+    if PACKAGES[key].get('repo'):
+     self.install_voice_node(key,work)
+    elif key=='kjnodes':
      target=self.root/'ComfyUI-KJNodes'
      if target.exists():raise ValueError('节点目录已存在，未覆盖；请重启或检查启动日志')
      with self.opener('https://api.github.com/repos/kijai/ComfyUI-KJNodes/commits/main',timeout=60) as response:revision=json.load(response)['sha']

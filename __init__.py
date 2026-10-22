@@ -249,8 +249,8 @@ if PromptServer is not None:
         try:
             batch_connect(request)
             action=request.match_info["action"]
-            if action=="resume":ensure_update_idle()
-            if action not in ("stop","resume"): raise ValueError("不支持的批次操作")
+            if action in ("resume","retry_merge"):ensure_update_idle()
+            if action not in ("stop","resume","retry_merge"): raise ValueError("不支持的批次操作")
             return web.json_response(getattr(batches,action)(request.match_info["batch_id"]))
         except (ValueError,OSError) as error: return web.json_response({"error":str(error)},status=400)
 

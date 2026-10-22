@@ -11,6 +11,7 @@ with tempfile.TemporaryDirectory() as temp:
     result=m.merge(out,{"clips":rows})
     target=out/result["subfolder"]/result["filename"]
     assert target.is_file() and target.stat().st_size>0
+    assert len(result['transitions'])==1 and result['transitions'][0]['warning'] and 'difference' in result['transitions'][0]
     probe=subprocess.run([m.ffmpeg_path(),"-i",str(target)],capture_output=True).stderr.decode()
     assert "00:00:01." in probe and "Audio:" in probe
     assert all((out/f"{i}.mp4").exists() for i in range(2))

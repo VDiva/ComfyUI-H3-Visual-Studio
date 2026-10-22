@@ -48,6 +48,30 @@ def resolve_clip(root, row):
         raise ValueError("视频不存在或路径越界")
     return target
 
+def stream_signature(line):
+    value=re.sub(r'^.*?(Video:|Audio:)',r'\1',line)
+    value=re.sub(r',?\s*\d+(?:\.\d+)? kb/s','',value)
+    value=re.sub(r'\b\d+(?:\.\d+)? (?:fps|tbr)\b',lambda m:str(round(float(m.group().split()[0])))+' '+m.group().split()[1],value)
+    return value.strip()
+
+
+def boundary_report(exe, clips):
+    reports=[]
+    def frame(clip,last):
+        args=[exe,'-nostdin','-v','error']+(['-sseof','-1'] if last else [])+['-i',str(clip),'-vf',('reverse,' if last else '')+'scale=64:64','-frames:v','1','-pix_fmt','rgb24','-f','rawvideo','-']
+        data=subprocess.run(args,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=60,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        if data.returncode or len(data.stdout)!=64*64*3:raise ValueError('无法解码首尾帧')
+        return data.stdout
+    for i in range(1,len(clips)):
+        try:
+            a,b=frame(clips[i-1],True),frame(clips[i],False)
+            score=sum(abs(x-y) for x,y in zip(a,b))/(len(a)*255)
+            reports.append({'after':i,'difference':round(score,4),'warning':score>0.18})
+        except (ValueError,subprocess.SubprocessError,OSError) as error:
+            reports.append({'after':i,'warning':True,'error':str(error)})
+    return reports
+
+
 def merge(output_root, payload):
     root = Path(output_root).resolve()
     rows = payload.get("clips", [])
@@ -90,6 +114,6 @@ def merge(output_root, payload):
                 temporary.replace(final)
             finally:
                 temporary.unlink(missing_ok=True)
-        return {"filename":final.name, "subfolder":"H3_Merged", "type":"output"}
+        return {"filename":final.name, "subfolder":"H3_Merged", "type":"output", "transitions":boundary_report(exe,clips)}
     finally:
         _LOCK.release()

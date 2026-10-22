@@ -1,6 +1,6 @@
-import {openVideoCompare} from './video-compare.mjs?v=0.15.27';
-import {MEGAPIXELS} from './resolution.mjs?v=0.15.27';
-import {modelReport,assertModels,modelChoices} from './model-check.mjs?v=0.15.27';
+import {openVideoCompare} from './video-compare.mjs?v=0.15.30';
+import {MEGAPIXELS} from './resolution.mjs?v=0.15.30';
+import {modelReport,assertModels,modelChoices} from './model-check.mjs?v=0.15.30';
 export const FINISH_MEGAPIXELS=Array.from({length:40},(_,i)=>(i+1)/10);
 export const LATENT_MODEL='minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors';
 export const defaultFinishing=()=>({defaultsVersion:1,refine:true,steps:4,denoise:0.15,passes:1,upscale:'latent',megapixels:1,model:'RealESRGAN_x4.pth',latentModel:LATENT_MODEL,chunking:true});
@@ -27,7 +27,7 @@ export function syncFinishingResolution(project,sourceMP){
  project.settings.megapixels=mp;if(s.megapixels===next&&!s.canvas)return false;
  project.finishing={...s,megapixels:next};delete project.finishing.canvas;return true;
 }
-export const isOriginalVideo=row=>/(?:^|[/\\])[^/\\]*_original(?:[/\\]|$)/.test((row.subfolder||'')+'/'+row.filename);
+export const isOriginalVideo=row=>/_original(?:_\d+_?)?\.[^.]+$/i.test(row.filename||'')||/(?:^|[/\\])[^/\\]*_original(?:[/\\]|$)/.test((row.subfolder||'')+'/'+row.filename);
 export function existingUpscale(clip,model,megapixels){
  if(!clip||clip.type!=='output'||!model||!MEGAPIXELS.includes(megapixels))throw Error('请选择output成片、超分模型和目标MP');
  const file=[clip.subfolder,clip.filename].filter(Boolean).join('/');

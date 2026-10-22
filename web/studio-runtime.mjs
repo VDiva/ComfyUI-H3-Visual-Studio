@@ -1,28 +1,30 @@
-import {mountVoiceSettings} from './dialogue.mjs?v=0.15.27';
-import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.27';
-import {mountProxyCore} from './proxy-core.mjs?v=0.15.27';
-import {backgroundBatch} from './background-batch.mjs?v=0.15.27';
-import {generationSummary} from './generation-summary.mjs?v=0.15.27';
-import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.27';
-import {openVideoCompare} from './video-compare.mjs?v=0.15.27';
-import {mountDependencies} from './dependencies.mjs?v=0.15.27';
-import {mountDirectorRecipe} from './director-recipe.mjs?v=0.15.27';
-import {mountSelfLift} from './selflift.mjs?v=0.15.27';
-import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.27';
-import {executionProgress} from './execution-progress.mjs?v=0.15.27';
-import {mountExecutionHealth} from './execution-health.mjs?v=0.15.27';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.27';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.15.27';
-import {openFolderTemplate} from './folder-template.mjs?v=0.15.27';
-import {livePreview} from './live-preview.mjs?v=0.15.27';
-import {modelDownloader} from './model-download.mjs?v=0.15.27';
-import {modelReport,reportText,assertModels,addVoiceModelReport} from './model-check.mjs?v=0.15.27';
-import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.27';
+import {compileSequence} from './sequence.mjs?v=0.15.30';
+import {mountFrameSettings} from './frame-settings.mjs?v=0.15.30';
+import {mountVoiceSettings} from './dialogue.mjs?v=0.15.30';
+import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.30';
+import {mountProxyCore} from './proxy-core.mjs?v=0.15.30';
+import {backgroundBatch} from './background-batch.mjs?v=0.15.30';
+import {generationSummary} from './generation-summary.mjs?v=0.15.30';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.30';
+import {openVideoCompare} from './video-compare.mjs?v=0.15.30';
+import {mountDependencies} from './dependencies.mjs?v=0.15.30';
+import {mountDirectorRecipe} from './director-recipe.mjs?v=0.15.30';
+import {mountSelfLift} from './selflift.mjs?v=0.15.30';
+import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.30';
+import {executionProgress} from './execution-progress.mjs?v=0.15.30';
+import {mountExecutionHealth} from './execution-health.mjs?v=0.15.30';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.30';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.15.30';
+import {openFolderTemplate} from './folder-template.mjs?v=0.15.30';
+import {livePreview} from './live-preview.mjs?v=0.15.30';
+import {modelDownloader} from './model-download.mjs?v=0.15.30';
+import {modelReport,reportText,assertModels,addVoiceModelReport} from './model-check.mjs?v=0.15.30';
+import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.30';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.27';
-import {parseFiles as parseProjectFiles,FOLDER_PARSER_VERSION} from './folder-parser.mjs?v=0.15.27';
-import {defaultProject,readProject,readWorkspace,workspaceData,bindSharedMedia,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.27';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.30';
+import {parseFiles as parseProjectFiles,FOLDER_PARSER_VERSION} from './folder-parser.mjs?v=0.15.30';
+import {defaultProject,readProject,readWorkspace,workspaceData,bindSharedMedia,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.30';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -54,7 +56,7 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.27</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.30</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组导演台API</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
@@ -110,7 +112,7 @@ function attach(node){
   if(page!==project)return;
   const counts=job.items.filter(i=>i.state==='done').length;
   batchInfo.textContent=`后台批次：${({queued:'排队',running:'执行中',disconnected:'服务异常，已暂停，待核对',merging:'合并中',done:'已完成',stopped:'已停止后续提交',paused:'暂停',error:'失败'})[job.state]||job.state} · ${counts}/${job.items.length}`+(job.error?' · '+job.error:'');
-  batchResume.hidden=job.state!=='paused';
+  batchResume.hidden=job.state!=='paused';batchRetryMerge.hidden=!(job.state==='error'&&job.items.length>1&&job.items.every(i=>i.state==='done'));
   const running=job.items.find(i=>['running','queued'].includes(i.state)&&i.promptId);
   if(running){
    if(running.promptId!==lastBatchPrompt){lastBatchPrompt=running.promptId;preview.watch(running.promptId,running.label+(running.state==='running'?' · 云端执行中':' · 等待云端执行'));}
@@ -119,8 +121,10 @@ function attach(node){
     if(!disposed&&row&&project===page&&page.batch?.id===job.id)progressTracker.syncQueue(running.promptId,row[2],running.label,!current);
    }).catch(()=>{if(!disposed&&project===page&&lastBatchPrompt===running.promptId)progressTracker.syncQueue(running.promptId,null,running.label,running.state!=='running');});
   }
+  if(job.mergedVideo)preview.video(view(job.mergedVideo),'合并成片已完成'+(job.mergedVideo.transitions?.some(t=>t.warning)?' · 接缝有变化，请检查首尾帧':''));
   render();setBusy(busy);
  }});
+ const batchRetryMerge=document.createElement('button');batchRetryMerge.textContent='重试合并（不重跑生成）';batchRetryMerge.hidden=true;batchInfo.after(batchRetryMerge);batchRetryMerge.onclick=()=>void batchController.action('retry_merge').catch(e=>log(e.message));
  const executionHealth=mountExecutionHealth({api,container:root.querySelector('.shell'),isBusy:()=>busy||batchController.active||batchController.needsRecovery,owns:id=>!!id&&(id===lastBatchPrompt||workspace.pages.some(p=>p.groups.some(g=>g.job?.promptId===id)||p.characters.some(c=>c.imageJob?.promptId===id))),onUnavailable:text=>{progressTracker.connectionLost(text);stop=true;batchController.suspend(text);setBusy(false);render();},onRecovered:()=>progressTracker.connectionRestored()});
  batchResume.onclick=()=>{void batchController.action('resume').catch(e=>log(e.message));};
  const updater=mountPluginUpdater({container:panels.models,api,log,onState:()=>setBusy(busy)});
@@ -130,12 +134,13 @@ function attach(node){
  const selfliftController=mountSelfLift({container:panels.finishing,getProject:()=>project,persist,onChange:()=>{syncSettings();render();},log});
  const recipeController=mountDirectorRecipe({container:panels.finishing,getProject:()=>project,persist,onChange:()=>{syncSettings();render();},log});
  const voiceController=mountVoiceSettings({container:panels.characters,getProject:()=>project,persist,upload,isBusy:()=>busy,log});
+ const frameController=mountFrameSettings({container:panels.shots,getGroup:current,persist,upload,isBusy:()=>busy||batchController.active,log});
  function numberGroups(){project.groups.forEach((g,i)=>g.number=i+1);selected=Math.max(0,Math.min(selected,project.groups.length-1));}
  function render(){
   $('page-list').replaceChildren();
   for(const page of workspace.pages){const button=document.createElement('button');button.className='page'+(page===project?' active':'');button.textContent=page.name;button.title=page.sourcePath||page.name;button.onclick=()=>{if(busy)return;project=page;workspace.activePageId=page.pageId;selected=0;syncSettings();persist();render();void batchController.query({discover:true});};$('page-list').append(button);}
   voiceController.sync();numberGroups();$('mode').value=project.mode;$('character-panel').hidden=project.mode!=='auto_character';renderCharacters();$('name').value=project.name;$('common').value=project.commonPrompt;commonResourceEditor.sync();$('audio').checked=!!project.audioReference;
-  $('auto-merge').checked=project.autoMerge===true;
+  $('auto-merge').checked=project.autoMerge===true;if($('segment-continuity'))$('segment-continuity').checked=!!project.continuity;frameController.sync();
   $('counts').textContent=`${project.media.images.length}图 · ${project.media.audios.length}音频 · ${project.media.videos.length}视频`;
   $('summary').textContent=`${project.groups.length}组 · ${project.groups.reduce((n,g)=>n+Number(g.seconds||0),0).toFixed(1)}秒请求时长`;
   $('gallery').replaceChildren();
@@ -158,7 +163,7 @@ function attach(node){
   $('result').replaceChildren();
   if(g){
    try{const video=videoWithCharacters(project,g);const plan=planGroup(video.project,video.group);$('binding').textContent=`本组实际输入 ${plan.images.length}图 / ${plan.audios.length}音频 / ${plan.videos.length}视频；${plan.length}帧 ≈ ${(plan.length/24).toFixed(2)}秒。`;}catch(e){$('binding').textContent='待修正：'+e.message;}
-   for(const file of [...(g.job?.videos||[]),...(project.mergedVideo?[project.mergedVideo]:[])]){const video=document.createElement('video');video.className='preview';video.controls=true;video.preload='metadata';video.src=view({...file,type:file.type||'output'});$('result').append(video);}
+   for(const file of ((project.batch?.autoMerge??project.autoMerge)?(project.mergedVideo?[project.mergedVideo]:[]):[...(g.job?.videos||[]),...(project.mergedVideo?[project.mergedVideo]:[])])){const video=document.createElement('video');video.className='preview';video.controls=true;video.preload='metadata';video.src=view({...file,type:file.type||'output'});$('result').append(video);}
    if(!busy&&g.job?.videos?.[0])preview.video(view({...g.job.videos[0],type:'output'}),'素材组'+g.number+' · 已完成视频');
   }else $('binding').textContent='';
   generationInfo.textContent=generationSummary(project,current());compareResult.disabled=!(project.comparison?.groups?.every(g=>g.job?.state==='done'&&g.job.videos?.[0]));
@@ -231,7 +236,7 @@ function attach(node){
  }
  $('folder').onclick=()=>$('folder-input').click();
  async function chapterPage(chapter,mode=project.mode,sharedImages=null,sharedMedia={}){
-  const next=defaultProject();next.pageId=uuid();next.name=chapter.name.split('/').at(-1);next.sourcePath=chapter.name;next.settings=structuredClone(project.settings);next.mode=mode;next.imageSettings=structuredClone(project.imageSettings);next.finishing=structuredClone(project.finishing);next.selflift=structuredClone(project.selflift);next.voiceSettings=structuredClone(project.voiceSettings);next.audioReference=project.audioReference;const maps={images:new Map(),audios:new Map(),videos:new Map()};
+  const next=defaultProject();next.pageId=uuid();next.name=chapter.name.split('/').at(-1);next.sourcePath=chapter.name;next.settings=structuredClone(project.settings);next.mode=mode;next.imageSettings=structuredClone(project.imageSettings);next.finishing=structuredClone(project.finishing);next.selflift=structuredClone(project.selflift);next.voiceSettings=structuredClone(project.voiceSettings);next.audioReference=project.audioReference;next.autoMerge=project.autoMerge;next.continuity=project.continuity;const maps={images:new Map(),audios:new Map(),videos:new Map()};
   for(const [key,shared,local] of [['images','sharedImages','images'],['audios','sharedAudios','audios'],['videos','sharedVideos','videos']]){
    if(key!=='images'&&sharedMedia[key]){next.media[key]=sharedMedia[key];continue;}
    if(key==='images'&&sharedImages){next.media.images=sharedImages;next.projectImageLibrary=true;continue;}
@@ -300,7 +305,7 @@ function attach(node){
    addVoiceModelReport(report,await voiceStatus.json(),['Base']);
    for(const name of ['Qwen3TTSVoiceClone','MiniMaxH3DialogueAudioLock','MiniMaxH3DialogueAudioFinalize'])if(!voiceInfo[name]&&!report.nodes.includes(name))report.nodes.push(name);
   }
-  const dependencyErrors=await dependencyController.check(prompts[0]||{});if(install||dependencyErrors.length||report.missing.length||report.nodes.length||report.unknown.length)showPanel('models');log(reportText(report));await downloader.show(report);if(install){await downloader.install(report);if(report.nodes.length)log('模型下载已处理；以下是缺少的节点，需要更新ComfyUI，不是下载权重：\n'+report.nodes.join('\n'));}else{assertModels(report);if(dependencyErrors.length)throw Error('缺少运行依赖：\n'+dependencyErrors.join('\n'));}return report;
+  const dependencyPrompt={...(prompts[0]||{})};if(!imageOnly&&project.voiceSettings?.voices?.some(v=>v.file))dependencyPrompt.voice_dependencies={class_type:'H3PrepareDialogue',inputs:{}};const dependencyErrors=await dependencyController.check(dependencyPrompt);if(install||dependencyErrors.length||report.missing.length||report.nodes.length||report.unknown.length)showPanel('models');log(reportText(report));await downloader.show(report);if(install){await downloader.install(report);if(report.nodes.length)log('模型下载已处理；以下是缺少的节点，需要更新ComfyUI，不是下载权重：\n'+report.nodes.join('\n'));}else{assertModels(report);if(dependencyErrors.length)throw Error('缺少运行依赖：\n'+dependencyErrors.join('\n'));}return report;
  }
  async function installModels(){if(busy)return;setBusy(true);try{await checkAllModels(await app.graphToPrompt(),{install:true});}catch(error){log(error.message);}finally{setBusy(false);}}
  $('install-models').onclick=installModels;
@@ -347,6 +352,7 @@ function attach(node){
   }
  }
  $('generate-characters').onclick=async()=>{if(busy)return;setBusy(true);stop=false;try{const graph=await app.graphToPrompt();await checkAllModels(graph,{imageOnly:true});await ensureCharacterImages(project.groups,graph);log('人物参考图已生成并保存到本页公共图库，未提交视频。');}catch(error){log('已停止：'+error.message);}finally{setBusy(false);}};
+ const continuityLabel=document.createElement('label'),continuityToggle=document.createElement('input');continuityToggle.type='checkbox';continuityToggle.id='segment-continuity';continuityLabel.append(continuityToggle,document.createTextNode('段间引导（引用上段22帧，连续镜头用）'));$('auto-merge').closest('label').after(continuityLabel);continuityToggle.onchange=()=>{project.continuity=continuityToggle.checked;persist();};
  $('auto-merge').onchange=()=>{project.autoMerge=$('auto-merge').checked;persist();};
  async function mergeGroups(groups){
   if(groups.length<2)throw Error('合并至少需要两个素材组');
@@ -354,15 +360,20 @@ function attach(node){
   log('FFmpeg正在从磁盘合并；原视频保留。');
   const response=await api.fetchApi('/h3_visual_studio/merge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clips})});
   const data=await response.json();if(!response.ok||!data.video)throw Error(data.error||'合并失败');
-  project.mergedVideo=data.video;preview.video(view(data.video),'合并视频已完成');persist();render();log('合并完成，已保存到output/H3_Merged；编辑区可预览。');
+  project.mergedVideo=data.video;preview.video(view(data.video),'合并视频已完成');persist();render();log('合并完成，已保存到output/H3_Merged；'+(data.video.transitions?.some(t=>t.warning)?'检测到接缝差异，请检查相邻首尾帧（切镜也可能产生差异）。':'首尾帧差异检测完成。'));
  }
  $('merge').onclick=async()=>{if(busy||batchController.active)return;setBusy(true);try{await mergeGroups(project.groups.filter(g=>g.selected!==false));}catch(error){log(error.message);}finally{setBusy(false);}};
  async function run(one){
   if(busy||batchController.active||batchController.needsRecovery||pluginUpdateBlocked()){log('插件更新中或此页有未结束后台批次，请先查询或停止后续提交。');return;}const chosen=one?[current()]:project.groups.filter(g=>g.selected!==false);if(!chosen.length||!chosen[0]){log('请先选择素材组');return;}
   setBusy(true);stop=false;
-  try{persist();const graph=await app.graphToPrompt();await checkAllModels(graph);await ensureCharacterImages(chosen,graph);if(stop||disposed)throw Error('已停止后续生成');const snapshot=structuredClone(project);const requests=new Map();for(const g of chosen){const copy=snapshot.groups.find(v=>v.id===g.id);requests.set(g.id,compileRequest(graph.output,snapshot,copy));}
+  try{persist();const graph=await app.graphToPrompt();await checkAllModels(graph);await ensureCharacterImages(chosen,graph);if(stop||disposed)throw Error('已停止后续生成');const snapshot=structuredClone(project);snapshot.autoMerge=!one&&project.autoMerge&&chosen.length>1;const requests=new Map();for(const g of chosen){const copy=snapshot.groups.find(v=>v.id===g.id);requests.set(g.id,compileRequest(graph.output,snapshot,copy));}
    const items=chosen.map(g=>{const request=requests.get(g.id),workflow=structuredClone(graph.workflow);workflow.extra ||= {};workflow.extra.h3_visual_request={pageId:project.pageId,groupId:g.id,groupNumber:g.number};return {groupId:g.id,label:'分段'+g.number,prompt:request.prompt,workflow};});
-   const job=await batchController.start(items,{autoMerge:!one&&project.autoMerge&&chosen.length>1});
+   const merged=!one&&project.autoMerge&&chosen.length>1;
+   const native=merged&&!project.voiceSettings?.voices?.some(v=>v.file);
+   let submitted=items;
+   if(native){submitted=[{...items[0],groupIds:chosen.map(g=>g.id),label:chosen.length+'段导演台成片',prompt:compileSequence(graph.output,snapshot,chosen)}];}
+   else if(project.continuity&&merged)throw Error('段间引导需要统一的首尾帧/参考模式，且暂不支持固定声线配音，请关闭引导或调整配置');
+   const job=await batchController.start(submitted,{autoMerge:merged,combinedOutput:native});
    log('后台批次已保存 '+job.id+'；现在可关闭页面。任务按顺序执行，刷新后可查询。');
   }catch(error){log('已停止：'+error.message+'。已提交任务不会自动重复提交，可查询任务状态。');}finally{activeJob=null;setBusy(false);}
  }

@@ -12,7 +12,8 @@ def node_class(name):
     import nodes
     value = nodes.NODE_CLASS_MAPPINGS.get(name)
     if value is None:
-        raise ValueError(f"缺少节点 {name}；请安装 shinrali/ComfyUI-Qwen3-TTS 和 badgids/ComfyUI-H3-ExactAudioLock，运行Qwen安装器后重启ComfyUI")
+        package='Qwen3-TTS配音节点与独立环境' if name.startswith('Qwen3TTS') else 'H3 ExactAudioLock对白锁定节点'
+        raise ValueError(f"缺少节点 {name}；请到工作室→模型与下载→运行模块与节点依赖，下载安装{package}，完成后重启ComfyUI。模型权重下载不能代替节点安装")
     return value
 
 def unpack(output):
