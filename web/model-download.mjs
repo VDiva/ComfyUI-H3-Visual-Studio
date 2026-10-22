@@ -10,7 +10,7 @@ export function modelDownloader({api,container,log,recheck}){
  async function start(keys){try{const response=await api.fetchApi('/h3_visual_studio/models/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keys})});const data=await response.json();if(!response.ok)throw Error(data.error||'下载启动失败');log('云端已开始顺序下载，完成后会重新检查模型。');await refresh();}catch(error){log(error.message);}}
  function paint(data){
   container.replaceChildren();
-  const backend=document.createElement('div');backend.textContent='下载组件0.5.12 · '+(sourceLabels[data.source_mode]||sourceLabels.auto)+' · 后台版本：'+(data.backend_version||'旧版（未返回版本号）')+' · 已收录'+data.catalog.length+'个模型';container.append(backend);
+  const backend=document.createElement('div');backend.textContent='下载组件0.5.13 · '+(sourceLabels[data.source_mode]||sourceLabels.auto)+' · 后台版本：'+(data.backend_version||'旧版（未返回版本号）')+' · 已收录'+data.catalog.length+'个模型';container.append(backend);
   const toolbar=document.createElement('div');toolbar.style.cssText='display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0';
   const refreshButton=document.createElement('button');refreshButton.textContent='刷新下载进度';refreshButton.onclick=()=>refresh();toolbar.append(refreshButton);
   const stopAll=document.createElement('button');stopAll.textContent='停止全部下载';stopAll.disabled=!Object.values(data.jobs).some(j=>active(j)&&j.state!=='stopping');stopAll.onclick=()=>stop();toolbar.append(stopAll);
@@ -26,6 +26,18 @@ export function modelDownloader({api,container,log,recheck}){
   const sourceHelp=document.createElement('small');sourceHelp.textContent='新下载/重试生效；已提交任务保持原选择';toolbar.append(sourceEditor,sourceHelp);container.append(toolbar);
   if(!proxyEditor){proxyEditor=document.createElement('div');proxyEditor.style.cssText='display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0';const field=document.createElement('input');field.id='download-proxy';field.placeholder='Clash HTTP/Mixed代理，例如http://127.0.0.1:7890';field.style.width='360px';field.value=data.proxy?.configured||'';const save=document.createElement('button');save.textContent='保存下载代理';const status=document.createElement('span');status.id='download-proxy-status';save.onclick=async()=>{try{const response=await api.fetchApi('/h3_visual_studio/models/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:field.value})});const result=await response.json();if(!response.ok)throw Error(result.error);log('代理配置已保存。正在传输的连接需等待重连后生效；失败任务请点击重试。');await refresh();}catch(error){log(error.message);}};const detect=document.createElement('button');detect.textContent='重新自动检测代理';detect.onclick=async()=>{detect.disabled=true;log('正在检测云端系统代理和Clash端口…');try{const response=await api.fetchApi('/h3_visual_studio/models/proxy/detect',{method:'POST'});const result=await response.json();if(!response.ok)throw Error(result.error||'代理检测失败');field.value='';log(result.proxy.message+(result.proxy.effective?' · '+result.proxy.effective:''));await refresh();}catch(error){log(error.message);}finally{detect.disabled=false;}};proxyEditor.append(detect,field,save,status);}
   proxyEditor.querySelector('#download-proxy-status').textContent='代理设置：'+(data.proxy?.effective||'未检测到系统代理，可能直连')+' · '+(data.proxy?.message||'下载开始前会自动检测Clash代理');container.append(proxyEditor);
+  const installedVoices=new Set(data.installed_voice_models||[]);
+  const voiceBox=document.createElement('div');voiceBox.className='library';
+  const heading=document.createElement('strong');heading.textContent='配音模型（完整目录）';voiceBox.append(heading);
+  for(const [kind,label] of [['Base','正式配音模型（Base）'],['VoiceDesign','声音设计模型（试听）']]){
+   const files=data.catalog.filter(m=>m.category==='qwen-voice'&&m.name.startsWith('Qwen3-TTS-12Hz-1.7B-'+kind+'/'));
+   const pending=files.filter(m=>!installedVoices.has(m.key));const row=document.createElement('p');
+   row.textContent=label+'：已扫描 '+(files.length-pending.length)+'/'+files.length+' 个文件';
+   const button=document.createElement('button');button.textContent='下载'+label;button.disabled=!pending.length;
+   button.onclick=()=>{const keys=pending.map(m=>m.key);missing=[...new Set([...missing,...keys])];return start(keys);};row.append(button);voiceBox.append(row);
+  }
+  const note=document.createElement('small');note.textContent='下载包括权重、配置及speech_tokenizer；仍需安装Qwen节点独立环境和ExactAudioLock。';voiceBox.append(note);container.append(voiceBox);
+  missing=missing.filter(k=>!installedVoices.has(k));
   const catalog=new Map(data.catalog.map(m=>[m.key,m]));
   const keys=missing.filter(k=>catalog.has(k));
   if(keys.length){const all=document.createElement('button');all.textContent='下载全部缺失模型（云端）';all.onclick=()=>start(keys);container.append(all);}

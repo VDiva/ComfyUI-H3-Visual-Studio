@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import http from 'node:http';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),{chromium}=require(process.env.H3_PLAYWRIGHT_MODULE||'playwright');
+const voices=JSON.parse(await fs.readFile(new URL('../model-catalog.json',import.meta.url),'utf8')).filter(r=>r.category==='qwen-voice');
 let mode='auto',reject=false,downloads=[],jobs={},stops=[];
 const server=http.createServer(async(req,res)=>{
  res.setHeader('Content-Type','application/json');
@@ -14,7 +15,7 @@ const server=http.createServer(async(req,res)=>{
   if(req.url.endsWith('/source')){if(reject){res.statusCode=400;res.end(JSON.stringify({error:'保存失败'}));return;}mode=data.mode;res.end(JSON.stringify({source_mode:mode}));return;}
   if(req.url.endsWith('/download')){downloads.push({mode,...data});res.end('{"jobs":{}}');return;}
  }
- res.end(JSON.stringify({backend_version:'0.5.11',source_mode:mode,catalog:[{key:'models/test',source:'https://huggingface.co/o/r'}],jobs,proxy:{}}));
+ res.end(JSON.stringify({backend_version:'0.5.11',source_mode:mode,installed_voice_models:[voices[0].key],catalog:[{key:'models/test',source:'https://huggingface.co/o/r'},...voices],jobs,proxy:{}}));
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
 try{
@@ -30,5 +31,9 @@ try{
  await page.getByRole('button',{name:'继续下载',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#log').textContent.includes('顺序下载'));assert.equal(downloads.length,2);
  jobs={'models/test':{state:'queued',bytes:0,total:10}};await page.getByRole('button',{name:'刷新下载进度',exact:true}).click();await page.getByRole('button',{name:'停止全部下载',exact:true}).click();await page.getByRole('button',{name:'继续下载',exact:true}).waitFor();assert.deepEqual(stops[1],{});
  assert.equal(await page.getByRole('button',{name:'停止全部下载',exact:true}).isDisabled(),true);
+ await page.getByRole('button',{name:'下载正式配音模型（Base）',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector('#log').textContent.includes('顺序下载'));
+ const voiceDownload=downloads.at(-1);assert.equal(voiceDownload.keys.length,10);assert.ok(voiceDownload.keys.every(k=>k.includes('-Base/')));assert.ok(!voiceDownload.keys.includes(voices[0].key));
+ console.log('PASS voice model cards, Base download and installed-file exclusion');
  console.log('PASS source selector, all modes, no implicit download, selected-source submission, reload and failed-save rollback');
 }finally{await browser?.close();await new Promise(r=>server.close(r));}

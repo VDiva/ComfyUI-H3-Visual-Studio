@@ -25,3 +25,13 @@ export function modelReport(info,prompts){
 }
 export function reportText(r){return [r.missing.length?'缺少模型（'+r.missing.length+'项）：\n'+r.missing.join('\n'):'',r.nodes.length?'缺少节点（请更新ComfyUI或安装对应插件）：\n'+r.nodes.join('\n'):'',r.unknown.length?'无法确认模型（未返回模型列表）：\n'+r.unknown.join('\n'):''].filter(Boolean).join('\n\n')||`模型检查通过（${r.checked.length}项）。`;}
 export function assertModels(r){if(r.missing.length||r.nodes.length||r.unknown.length)throw Error(reportText(r));}
+
+export function addVoiceModelReport(report,status,kinds){
+ const installed=new Set(status.installed_voice_models||[]);
+ for(const row of status.catalog||[]){
+  if(row.category!=='qwen-voice'||!kinds.some(kind=>row.name.startsWith('Qwen3-TTS-12Hz-1.7B-'+kind+'/')))continue;
+  if(!report.checked.includes(row.key))report.checked.push(row.key);
+  if(!installed.has(row.key)&&!report.missing.includes(row.key))report.missing.push(row.key);
+ }
+ return report;
+}

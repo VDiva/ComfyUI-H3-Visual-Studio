@@ -1,28 +1,28 @@
-import {mountVoiceSettings} from './dialogue.mjs?v=0.15.22';
-import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.22';
-import {mountProxyCore} from './proxy-core.mjs?v=0.15.22';
-import {backgroundBatch} from './background-batch.mjs?v=0.15.22';
-import {generationSummary} from './generation-summary.mjs?v=0.15.22';
-import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.22';
-import {openVideoCompare} from './video-compare.mjs?v=0.15.22';
-import {mountDependencies} from './dependencies.mjs?v=0.15.22';
-import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.22';
-import {mountSelfLift} from './selflift.mjs?v=0.15.22';
-import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.22';
-import {executionProgress} from './execution-progress.mjs?v=0.15.22';
-import {mountExecutionHealth} from './execution-health.mjs?v=0.15.22';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.22';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.15.22';
-import {openFolderTemplate} from './folder-template.mjs?v=0.15.22';
-import {livePreview} from './live-preview.mjs?v=0.15.22';
-import {modelDownloader} from './model-download.mjs?v=0.15.22';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.22';
-import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.22';
+import {mountVoiceSettings} from './dialogue.mjs?v=0.15.26';
+import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.26';
+import {mountProxyCore} from './proxy-core.mjs?v=0.15.26';
+import {backgroundBatch} from './background-batch.mjs?v=0.15.26';
+import {generationSummary} from './generation-summary.mjs?v=0.15.26';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.26';
+import {openVideoCompare} from './video-compare.mjs?v=0.15.26';
+import {mountDependencies} from './dependencies.mjs?v=0.15.26';
+import {mountDirectorRecipe} from './director-recipe.mjs?v=0.15.26';
+import {mountSelfLift} from './selflift.mjs?v=0.15.26';
+import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.26';
+import {executionProgress} from './execution-progress.mjs?v=0.15.26';
+import {mountExecutionHealth} from './execution-health.mjs?v=0.15.26';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.26';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.15.26';
+import {openFolderTemplate} from './folder-template.mjs?v=0.15.26';
+import {livePreview} from './live-preview.mjs?v=0.15.26';
+import {modelDownloader} from './model-download.mjs?v=0.15.26';
+import {modelReport,reportText,assertModels,addVoiceModelReport} from './model-check.mjs?v=0.15.26';
+import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.26';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.22';
-import {parseFiles as parseProjectFiles,FOLDER_PARSER_VERSION} from './folder-parser.mjs?v=0.15.22';
-import {defaultProject,readProject,readWorkspace,workspaceData,bindSharedMedia,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.22';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.26';
+import {parseFiles as parseProjectFiles,FOLDER_PARSER_VERSION} from './folder-parser.mjs?v=0.15.26';
+import {defaultProject,readProject,readWorkspace,workspaceData,bindSharedMedia,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.26';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -54,7 +54,7 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.22</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.26</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组导演台API</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
@@ -231,7 +231,7 @@ function attach(node){
  }
  $('folder').onclick=()=>$('folder-input').click();
  async function chapterPage(chapter,mode=project.mode,sharedImages=null,sharedMedia={}){
-  const next=defaultProject();next.pageId=uuid();next.name=chapter.name.split('/').at(-1);next.sourcePath=chapter.name;next.settings={...project.settings,steps:8,sampler:'euler',acceleration:'inherit'};next.mode=mode;next.imageSettings=structuredClone(project.imageSettings);next.finishing={...structuredClone(project.finishing),refine:false,upscale:'off'};next.audioReference=project.audioReference;applyDirectorPreset(next,true);const maps={images:new Map(),audios:new Map(),videos:new Map()};
+  const next=defaultProject();next.pageId=uuid();next.name=chapter.name.split('/').at(-1);next.sourcePath=chapter.name;next.settings=structuredClone(project.settings);next.mode=mode;next.imageSettings=structuredClone(project.imageSettings);next.finishing=structuredClone(project.finishing);next.selflift=structuredClone(project.selflift);next.voiceSettings=structuredClone(project.voiceSettings);next.audioReference=project.audioReference;const maps={images:new Map(),audios:new Map(),videos:new Map()};
   for(const [key,shared,local] of [['images','sharedImages','images'],['audios','sharedAudios','audios'],['videos','sharedVideos','videos']]){
    if(key!=='images'&&sharedMedia[key]){next.media[key]=sharedMedia[key];continue;}
    if(key==='images'&&sharedImages){next.media.images=sharedImages;next.projectImageLibrary=true;continue;}
@@ -294,7 +294,13 @@ function attach(node){
   const response=await api.fetchApi('/object_info');if(!response.ok)throw Error('无法获取云端模型清单，未提交任务');
   const prompts=imageOnly?[]:[compileRequest(graph.output,{...project,mode:'reference',commonPrompt:'',media:{images:[],audios:[],videos:[]}},{id:'model-check',number:1,seconds:1,prompt:'模型检查'}).prompt];
   if(imageOnly||project.mode==='auto_character')prompts.push(compileCharacterImage(project,{id:'CHECK',name:'模型检查',description:'仅检查模型，不提交生图'}).prompt);
-  const report=modelReport(await response.json(),prompts);const dependencyErrors=await dependencyController.check(prompts[0]||{});if(install||dependencyErrors.length||report.missing.length||report.nodes.length||report.unknown.length)showPanel('models');log(reportText(report));await downloader.show(report);if(install){await downloader.install(report);if(report.nodes.length)log('模型下载已处理；以下是缺少的节点，需要更新ComfyUI，不是下载权重：\n'+report.nodes.join('\n'));}else{assertModels(report);if(dependencyErrors.length)throw Error('缺少运行依赖：\n'+dependencyErrors.join('\n'));}return report;
+  const voiceInfo=await response.json();const report=modelReport(voiceInfo,prompts);
+  if(!imageOnly&&project.voiceSettings?.voices?.some(v=>v.file)){
+   const voiceStatus=await api.fetchApi('/h3_visual_studio/models');if(!voiceStatus.ok)throw Error('无法扫描服务器配音模型');
+   addVoiceModelReport(report,await voiceStatus.json(),['Base']);
+   for(const name of ['Qwen3TTSVoiceClone','MiniMaxH3DialogueAudioLock','MiniMaxH3DialogueAudioFinalize'])if(!voiceInfo[name]&&!report.nodes.includes(name))report.nodes.push(name);
+  }
+  const dependencyErrors=await dependencyController.check(prompts[0]||{});if(install||dependencyErrors.length||report.missing.length||report.nodes.length||report.unknown.length)showPanel('models');log(reportText(report));await downloader.show(report);if(install){await downloader.install(report);if(report.nodes.length)log('模型下载已处理；以下是缺少的节点，需要更新ComfyUI，不是下载权重：\n'+report.nodes.join('\n'));}else{assertModels(report);if(dependencyErrors.length)throw Error('缺少运行依赖：\n'+dependencyErrors.join('\n'));}return report;
  }
  async function installModels(){if(busy)return;setBusy(true);try{await checkAllModels(await app.graphToPrompt(),{install:true});}catch(error){log(error.message);}finally{setBusy(false);}}
  $('install-models').onclick=installModels;

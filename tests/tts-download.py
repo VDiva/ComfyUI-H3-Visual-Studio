@@ -24,3 +24,13 @@ with tempfile.TemporaryDirectory() as temp:
  d.opener=corrupt;d.run(model);assert d.status()[model['key']]['state']=='error';assert not (Path(temp)/'Test/config.json').exists()
  d.pool.shutdown()
 print('PASS both complete TTS manifests, nested directories, pinned small-file Git blob verification and corruption rejection')
+
+from unittest.mock import patch
+with tempfile.TemporaryDirectory() as temp:
+ rows=[dict(key='models/qwen-voice/Test/config.json',category='qwen-voice',name='Test/config.json',size=2),dict(key='models/qwen-voice/Test/model.safetensors',category='qwen-voice',name='Test/model.safetensors',size=3)]
+ target=Path(temp)/'Test';target.mkdir();(target/'config.json').write_bytes(b'{}');(target/'model.safetensors').write_bytes(b'x')
+ with patch.object(m,'load_catalog',return_value=rows):
+  assert m.installed_voice_models(lambda _:temp)==[rows[0]['key']]
+  (target/'model.safetensors').write_bytes(b'xyz')
+  assert m.installed_voice_models(lambda _:temp)==[r['key'] for r in rows]
+print('PASS voice scan detects existing files, incomplete weights and completed model directory')

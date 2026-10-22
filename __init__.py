@@ -83,8 +83,9 @@ if PromptServer is not None:
             return web.json_response({"error":"合并失败，请检查服务器日志及FFmpeg安装"}, status=500)
 
 if PromptServer is not None:
-    from .model_download import Downloads, load_catalog, BACKEND_VERSION
+    from .model_download import Downloads, load_catalog, BACKEND_VERSION, installed_voice_models
     def model_directory(category):
+        if category=='qwen-voice':return str(Path(folder_paths.models_dir)/category)
         paths = folder_paths.get_folder_paths(category)
         return paths[0] if paths else str(__import__('pathlib').Path(folder_paths.models_dir) / category)
     def invalidate_models():
@@ -99,7 +100,7 @@ if PromptServer is not None:
 
     @PromptServer.instance.routes.get("/h3_visual_studio/models")
     async def model_download_status(request):
-        return web.json_response({"catalog": load_catalog(), "backend_version": BACKEND_VERSION, "jobs": downloads.status(), "proxy":downloads.proxy_info(),"source_mode":downloads.source_mode})
+        return web.json_response({"catalog": load_catalog(), "installed_voice_models": installed_voice_models(model_directory), "backend_version": BACKEND_VERSION, "jobs": downloads.status(), "proxy":downloads.proxy_info(),"source_mode":downloads.source_mode})
 
     @PromptServer.instance.routes.post('/h3_visual_studio/models/source')
     async def configure_model_source(request):

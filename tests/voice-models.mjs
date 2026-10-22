@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {addVoiceModelReport} from '../web/model-check.mjs';
+const catalog=JSON.parse(fs.readFileSync(new URL('../model-catalog.json',import.meta.url),'utf8'));
+const base=catalog.filter(r=>r.category==='qwen-voice'&&r.name.includes('-Base/'));
+const report=()=>({missing:[],checked:[],unknown:[],nodes:[]});
+const partial=addVoiceModelReport(report(),{catalog,installed_voice_models:[base[0].key]},['Base']);
+assert.equal(partial.checked.length,11);assert.equal(partial.missing.length,10);assert.ok(!partial.missing.includes(base[0].key));assert.ok(partial.missing.every(k=>k.includes('-Base/')));
+assert.equal(addVoiceModelReport(report(),{catalog,installed_voice_models:base.map(r=>r.key)},['Base']).missing.length,0);
+assert.equal(addVoiceModelReport(report(),{catalog,installed_voice_models:[]},['Base','VoiceDesign']).missing.length,22);
+console.log('PASS required Base scan, existing-file exclusion and both complete 11-file model packages');

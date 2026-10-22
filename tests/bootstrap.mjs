@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {ensureWorkflow,isStudioWorkflow,BACKUP_KEY} from '../web/bootstrap.mjs';
+import {ensureWorkflow,isStudioWorkflow,BACKUP_KEY,importCleanWorkflow} from '../web/bootstrap.mjs';
 import {workflowTemplate} from '../web/workflow-template.mjs';
 let passed=0;
 const storage=()=>{const values=new Map();return {setItem:(k,v)=>values.set(k,v),getItem:k=>values.get(k)};};
@@ -18,3 +18,13 @@ await assert.rejects(()=>ensureWorkflow({app:broken,storage:storage(),getControl
 const missing=appFor(original);await assert.rejects(()=>ensureWorkflow({app:missing,storage:storage(),getController:()=>null,pause:async()=>{}}),/初始化失败/);assert.equal(missing.graph._nodes[0].type,'PrimitiveInt');passed++;
 const partial=appFor({nodes:[{id:1,type:'H3VisualProject',widgets_values:['{"custom":"saved pages"}']}]});await ensureWorkflow({app:partial,storage:storage(),getController:lookup});assert.equal(partial.graph._nodes.find(n=>n.type==='H3VisualProject').widgets_values[0],'{"custom":"saved pages"}');assert.equal(workflowTemplate.nodes.find(n=>n.type==='H3VisualProject').widgets_values[0].includes('custom'),false);passed++;
 console.log(JSON.stringify({passed,checks:'auto-create, reuse, backup, quota safety, load rollback, init rollback, saved-page preservation'}));
+
+const dirty=appFor({nodes:structuredClone(workflowTemplate.nodes)});dirty.graph._nodes.find(n=>n.type==='H3VisualProject').widgets_values[0]='{"name":"旧工程","groups":[{"id":"old"}]}';
+const cleanBackup=storage();await importCleanWorkflow({app:dirty,storage:cleanBackup,getController:lookup});
+const cleanProject=JSON.parse(dirty.graph._nodes.find(n=>n.type==='H3VisualProject').widgets_values[0]);
+assert.equal(cleanProject.pages.length,1);assert.deepEqual(cleanProject.pages[0].groups,[]);assert.deepEqual(cleanProject.pages[0].media.images,[]);assert.equal(cleanProject.pages[0].settings.width,864);assert.equal(cleanProject.pages[0].finishing.megapixels,1);
+assert.ok(JSON.parse(cleanBackup.getItem(BACKUP_KEY)).nodes.find(n=>n.type==='H3VisualProject').widgets_values[0].includes('old'));
+const active=appFor(workflowTemplate);await assert.rejects(()=>importCleanWorkflow({app:active,storage:storage(),getController:()=>({isBusy:()=>true})}),/正在处理任务/);assert.equal(active.loads,0);
+const cleanFailure=appFor(original);let rejectClean=true;const cleanLoad=cleanFailure.loadGraphData.bind(cleanFailure);cleanFailure.loadGraphData=async data=>{if(rejectClean){rejectClean=false;throw Error('clean load failed');}return cleanLoad(data);};
+await assert.rejects(()=>importCleanWorkflow({app:cleanFailure,storage:storage(),getController:lookup}),/clean load failed/);assert.equal(cleanFailure.graph._nodes[0].type,'PrimitiveInt');
+console.log('PASS explicit clean workflow replaces existing project, applies current defaults, backs up original, blocks busy tasks and rolls back load failure');

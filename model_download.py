@@ -4,7 +4,7 @@ import time
 from collections import deque
 import urllib.error, urllib.parse, socket, errno, http.client, ssl
 import re, json, threading, concurrent.futures, urllib.request, hashlib, os, shutil
-BACKEND_VERSION = "0.5.12"
+BACKEND_VERSION = "0.5.13"
 CATALOG_PATH = Path(__file__).parent / "model-catalog.json"
 DMAD_MODEL = {
     "key": "models/loras/dmad_minimax_h3_4step_full_critic_comfyui.safetensors",
@@ -19,6 +19,19 @@ def load_catalog():
     rows = [row for row in rows if row.get("key") != DMAD_MODEL["key"]]
     return [dict(DMAD_MODEL)] + rows
 CATALOG = load_catalog()
+
+def installed_voice_models(directory):
+    installed=[]
+    for row in load_catalog():
+        if row.get('category')!='qwen-voice':continue
+        try:
+            root=Path(directory('qwen-voice')).resolve()
+            file=(root/row['name']).resolve()
+            if file.is_relative_to(root) and file.is_file() and file.stat().st_size==row['size']:
+                installed.append(row['key'])
+        except (OSError,KeyError,TypeError):pass
+    return installed
+
 
 class DownloadStopped(Exception):
     pass
@@ -214,6 +227,7 @@ class Downloads:
             if not target.is_relative_to(root): raise ValueError("模型路径越界")
             if target.exists(): raise ValueError("目标文件已存在，未覆盖；请先检查已有文件")
 
+            target.parent.mkdir(parents=True,exist_ok=True)
             part=target.with_name(target.name+".h3download.part")
             headers={"User-Agent":"H3-Visual-Studio"}
             token=os.environ.get("HF_TOKEN")
@@ -231,7 +245,11 @@ class Downloads:
                         metadata=json.load(meta)
                     entry=next((s for s in metadata.get("siblings",[]) if s.get("rfilename")==filepath),{})
                     lfs=entry.get("lfs",{});expected=lfs.get("sha256");size=entry.get("size") or lfs.get("size")
-                    if not isinstance(expected,str) or not re.fullmatch(r"[a-f0-9]{64}",expected) or not isinstance(size,int) or size<=0 or not isinstance(metadata.get('sha'),str) or not metadata['sha']:raise ValueError("下载源未返回版本、大小/SHA256，无法校验，未下载")
+                    algorithm='sha256'
+                    if not expected and model.get('category')=='qwen-voice':
+                        expected=entry.get('blobId');algorithm='git-sha1'
+                    pattern=r'[a-f0-9]{40}' if algorithm=='git-sha1' else r'[a-f0-9]{64}'
+                    if not isinstance(expected,str) or not re.fullmatch(pattern,expected) or not isinstance(size,int) or size<=0 or not isinstance(metadata.get('sha'),str) or not metadata['sha']:raise ValueError("下载源未返回版本、大小/SHA256，无法校验，未下载")
                     break
                 except (ValueError,TypeError,AttributeError,OSError,http.client.HTTPException) as error:
                     if mode!='auto' or self.jobs[key].get('download_source')!='xiangongyun' or metadata_attempt:raise
@@ -241,6 +259,7 @@ class Downloads:
             self.update(key,reset_mirror_prefix=False)
             marker=part.with_name(part.name+".json")
             identity={"sha256":expected,"size":size}
+            if algorithm!='sha256':identity['algorithm']=algorithm
             try: compatible=json.loads(marker.read_text())==identity
             except (OSError,ValueError): compatible=False
             if not compatible or part.exists() and part.stat().st_size>size:
@@ -306,7 +325,8 @@ class Downloads:
             stage="校验文件"
             self.check_stopped(key)
             self.update(key,state="verifying")
-            digest=hashlib.sha256()
+            digest=hashlib.sha1() if algorithm=='git-sha1' else hashlib.sha256()
+            if algorithm=='git-sha1':digest.update(('blob '+str(size)+'\0').encode())
             with part.open("rb") as downloaded:
                 while chunk:=downloaded.read(4*1024*1024):
                     self.check_stopped(key)

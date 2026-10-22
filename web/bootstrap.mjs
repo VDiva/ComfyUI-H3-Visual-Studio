@@ -1,4 +1,6 @@
-import {workflowTemplate} from './workflow-template.mjs?v=0.15.22';
+import {readWorkspace} from './project.mjs?v=0.15.26';
+import {pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.26';
+import {workflowTemplate} from './workflow-template.mjs?v=0.15.26';
 export const BACKUP_KEY='h3-visual-studio.before-auto-create.v1';
 const kind=n=>n.comfyClass||n.type;
 export function isStudioWorkflow(graph){
@@ -26,10 +28,24 @@ export async function ensureWorkflow({app,storage,getController,pause=ms=>new Pr
  if(created)await app.loadGraphData(before);
  throw Error('可视化工作流初始化失败。请确认已重启ComfyUI并强制刷新插件。');
 }
+export async function importCleanWorkflow({app,storage,getController,pause}){
+ if(pluginUpdateBlocked()||(app.graph?._nodes||[]).some(n=>getController(n)?.isBusy?.()))throw Error('工作室正在处理任务或插件更新，请完成后再导入纯净工作流');
+ const before=structuredClone(app.graph.serialize());
+ storage.setItem(BACKUP_KEY,JSON.stringify(before));
+ const clean=structuredClone(workflowTemplate);
+ clean.nodes.find(n=>n.type==='H3VisualProject').widgets_values[0]=JSON.stringify(readWorkspace({}));
+ try{
+  await app.loadGraphData(clean);
+  const ready=await ensureWorkflow({app,storage,getController,pause});
+  app.graph.setDirtyCanvas?.(true,true);
+  return ready;
+ }catch(error){await app.loadGraphData(before);throw error;}
+}
 export function mountGlobalImporter({app,getController,parseFiles,download,prepare=async()=>{},storage=localStorage}){
  if(document.getElementById('h3-global-import'))return;
  const panel=document.createElement('div');panel.id='h3-global-import';panel.style.cssText='position:fixed;right:22px;top:90px;z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;gap:6px;font:13px/1.5 system-ui';
  const button=document.createElement('button');button.id='h3-global-import-button';button.textContent='H3 导入提示词与素材';button.title='H3可视化工作室 · 全局导入入口';button.style.cssText='background:#176d59;color:white;border:1px solid #55c9a8;border-radius:8px;padding:9px 14px;cursor:pointer';
+ const clean=document.createElement('button');clean.id='h3-import-clean-workflow';clean.textContent='导入纯净工作流';clean.title='加载默认工作流和空白工程；当前画布自动备份，可在下方恢复';clean.style.cssText=button.style.cssText;
  const install=document.createElement('button');install.id='h3-global-install-models';install.textContent='一键安装所需模型';install.style.cssText=button.style.cssText;
  const input=document.createElement('input');input.id='h3-global-folder';input.type='file';input.webkitdirectory=true;input.multiple=true;input.style.display='none';
  const mode=document.createElement('select');mode.id='h3-global-mode';mode.style.cssText='background:#18302c;color:white;border:1px solid #476d61;border-radius:6px;padding:5px';
@@ -43,14 +59,15 @@ export function mountGlobalImporter({app,getController,parseFiles,download,prepa
  const options=document.createElement('details');options.id='h3-import-options';options.style.cssText='max-width:360px;background:#12222e;color:white;border-radius:6px;padding:4px';const summary=document.createElement('summary');summary.textContent='导入模式与备份';options.append(summary,mode,restore,backup,message);
  const launcher=document.createElement('button');launcher.id='h3-import-toggle';launcher.textContent='H3';launcher.title='H3工作室：导入、模型安装与目录工具';launcher.setAttribute('aria-expanded','false');launcher.style.cssText='width:42px;height:36px;background:#176d59;color:white;border:1px solid #55c9a8;border-radius:9px;cursor:pointer';
  const menu=document.createElement('div');menu.id='h3-import-menu';menu.style.cssText='display:none;flex-direction:column;align-items:stretch;gap:8px;padding:12px;background:#12222e;border:1px solid #426172;border-radius:10px;width:280px;max-width:calc(100vw - 30px);max-height:70vh;overflow:auto;box-shadow:0 12px 30px #0008';
- menu.append(label,button,install,options);panel.append(launcher,menu,input);document.body.append(panel);
+ menu.append(label,clean,button,install,options);panel.append(launcher,menu,input);document.body.append(panel);
  function setOpen(open){menu.style.display=open?'flex':'none';launcher.setAttribute('aria-expanded',String(open));}
  launcher.onclick=()=>setOpen(launcher.getAttribute('aria-expanded')!=='true');
  document.addEventListener('pointerdown',event=>{if(!panel.contains(event.target))setOpen(false);});
  document.addEventListener('keydown',event=>{if(event.key==='Escape')setOpen(false);});
  let busy=false;
  const status=text=>{message.textContent=text;message.style.display='block';launcher.title='H3工作室：'+text;options.open=true;setOpen(true);};
- function sync(){let exists=false;try{exists=!!storage.getItem(BACKUP_KEY);}catch{}restore.hidden=!exists;backup.hidden=!exists;button.disabled=busy;install.disabled=busy;mode.disabled=busy;restore.disabled=busy;backup.disabled=busy;}
+ function sync(){let exists=false;try{exists=!!storage.getItem(BACKUP_KEY);}catch{}restore.hidden=!exists;backup.hidden=!exists;button.disabled=busy;clean.disabled=busy;install.disabled=busy;mode.disabled=busy;restore.disabled=busy;backup.disabled=busy;}
+ clean.onclick=async()=>{if(busy)return;busy=true;sync();try{await prepare();await importCleanWorkflow({app,storage,getController});status('已导入纯净工作流，使用默认生成参数和空白工程。原画布已备份，可在下方恢复。');}catch(error){status('纯净工作流导入失败：'+error.message);}finally{busy=false;sync();}};
  install.onclick=async()=>{if(busy)return;busy=true;sync();try{await prepare();const ready=await ensureWorkflow({app,storage,getController});status('已打开工作室，正在检查并安装所需模型。下载进度见工作室面板。');await ready.controller.installModels();}catch(error){status('安装未完成：'+error.message);}finally{busy=false;sync();}};
  button.onclick=()=>{if(!busy){input.click();setOpen(false);}};
  input.onchange=async()=>{
