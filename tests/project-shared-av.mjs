@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {parseFiles} from '../web/folder-parser.mjs';
+import {defaultProject,readWorkspace,workspaceData,bindSharedMedia,planGroup} from '../web/project.mjs';
+const f=(path,text='')=>({name:path.split('/').at(-1),webkitRelativePath:path,text:async()=>text});
+const pages=await parseFiles([f('项目/参考图/@图片1.png'),f('项目/参考音频/@音频1.wav'),f('项目/参考视频/@视频1.mp4'),...['甲','乙'].map(n=>f(`项目/第一话/${n}/提示词.txt`,'@图片1 @音频1用于声线 @视频1用于动作 0～4秒'))]);
+assert.strictEqual(pages[0].sharedAudios,pages[1].sharedAudios);assert.strictEqual(pages[0].sharedVideos,pages[1].sharedVideos);
+const w=readWorkspace({pages:pages.map((c,i)=>({...defaultProject(),pageId:'p'+i,groups:[{id:'g'+i,number:1,seconds:4,prompt:c.groups[0].prompt}]})),sharedImages:[{id:1,file:'image.png'}],sharedAudios:[{id:1,file:'audio.wav'}],sharedVideos:[{id:1,file:'video.mp4'}]});
+assert.strictEqual(w.pages[0].media.audios,w.pages[1].media.audios);assert.strictEqual(w.pages[0].media.videos,w.pages[1].media.videos);
+assert.equal(planGroup(w.pages[0],w.pages[0].groups[0]).audios.length,0);w.pages[0].audioReference=true;assert.equal(planGroup(w.pages[0],w.pages[0].groups[0]).audios.length,1);
+const saved=workspaceData(w);assert.equal(saved.pages[0].media.audios.length,0);const restored=readWorkspace(JSON.stringify(saved));assert.strictEqual(restored.pages[0].media.audios,restored.pages[1].media.audios);const fresh=bindSharedMedia(restored,defaultProject());assert.strictEqual(fresh.media.videos,restored.sharedVideos);
+console.log('PASS project audio/video inheritance, shared persistence, new pages and disabled-by-default audio');

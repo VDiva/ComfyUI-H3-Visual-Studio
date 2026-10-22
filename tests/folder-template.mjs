@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {buildFolderTemplate,writeTemplateDirectory} from '../web/folder-template.mjs';
 import '../web/folder-core.js';
 const t=buildFolderTemplate({name:'1_30',pages:2,groups:3,seconds:4,mode:'reference'});
-assert.equal(t.entries.filter(r=>/提示词\d*\.txt$/.test(r.path)).length,6);assert.equal(t.entries.filter(r=>r.path.endsWith('/公共参考图/')).length,2);assert.ok(!t.entries.some(r=>/素材组\d+\/参考图/.test(r.path)));
+assert.equal(t.entries.filter(r=>/提示词\d*\.txt$/.test(r.path)).length,6);assert.equal(t.entries.filter(r=>r.path.endsWith('/参考图/')).length,1);assert.ok(!t.entries.some(r=>/素材组\d+\/参考图/.test(r.path)));
 for(const row of t.entries.filter(r=>/提示词\d*\.txt$/.test(r.path))){for(const key of ['integrated_multimodal_description:','overall_soundscape:','non_diegetic_music:'])assert.equal(row.text.split(key).length,2);assert.ok(!row.text.includes('<Audio'));}
 const auto=buildFolderTemplate({name:'1_31',pages:2,groups:2,seconds:2,mode:'auto_character'});assert.ok(!auto.entries.some(r=>r.path.includes('公共参考图')));
 const files=auto.entries.filter(r=>!r.directory).map(r=>({name:r.path.split('/').at(-1),webkitRelativePath:r.path,text:async()=>r.text}));const parsed=await globalThis.H3FolderCore.parseFiles(files,{allowNoImages:true});assert.equal(parsed.length,2);assert.equal(parsed[0].groups[0].seconds,2);

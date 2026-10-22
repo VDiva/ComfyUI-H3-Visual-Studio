@@ -1,4 +1,4 @@
-"""Own a loopback-only Mihomo process; no core code or binaries are bundled.
+"""Own a loopback-only Mihomo process; standalone Web may supply official archives.
 
 Official assets/digests: https://github.com/MetaCubeX/mihomo/releases/tag/v1.19.32
 Mihomo is a separate GPL-3.0 executable. See NOTICE; no subscription is returned

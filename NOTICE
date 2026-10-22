@@ -3,8 +3,13 @@ H3 Visual Studio — integrated MiniMax H3 Director runtime
 Optional proxy integration: Mihomo, maintained by MetaCubeX,
 https://github.com/MetaCubeX/mihomo (GPL-3.0).
 The Studio communicates with Mihomo as a separate process through its local
-REST/HTTP interfaces. No Mihomo source or executable is included in this
-distribution. The optional installer fetches the official v1.19.32 asset,
+REST/HTTP interfaces. The standalone proxy-web/cores/ directory includes unmodified official
+Linux x64 and Windows x64 v1.19.32 archives. Their published SHA256 and
+original download URLs are recorded in proxy-web/cores/manifest.json.
+The original license is retained at proxy-web/LICENSE-Mihomo.
+Corresponding source: https://github.com/MetaCubeX/mihomo/tree/v1.19.32
+Source archive: https://github.com/MetaCubeX/mihomo/archive/refs/tags/v1.19.32.tar.gz
+These components remain separate from the Studio license. The optional installer fetches the official v1.19.32 asset,
 verifies its published SHA256, and retains its unmodified LICENSE and exact
 release/source URL beside the privately installed executable. Do not treat
 that executable as covered by the Studio's Apache-2.0 license or include

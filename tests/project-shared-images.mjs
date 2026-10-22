@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {parseFiles} from '../web/folder-parser.mjs';
+import {defaultProject,readWorkspace,workspaceData,planGroup} from '../web/project.mjs';
+const file=(path,text='')=>({name:path.split('/').at(-1),webkitRelativePath:path,text:async()=>text});
+const images=[1,2,3].map(n=>file(`黑暗集会/参考图/@图片${n}.png`));
+const pages=await parseFiles([...images,file('黑暗集会/01/1_24_01/提示词.txt','@图片3 @图片1 @图片3 0～4秒'),file('黑暗集会/02/1_25_01/提示词.txt','@图片2 0～4秒')]);
+assert.equal(pages.length,2);assert.equal(pages[0].sharedImageRoot,'黑暗集会');assert.strictEqual(pages[0].sharedImages,pages[1].sharedImages);
+const sharedImages=images.map((f,i)=>({id:i+1,name:f.name,file:`input${i+1}.png`}));
+const workspace=readWorkspace({sharedImages,pages:pages.map((p,i)=>({...defaultProject(),pageId:'p'+i,groups:[{id:'g'+i,number:1,seconds:4,prompt:p.groups[0].prompt}]}))});
+assert.strictEqual(workspace.pages[0].media.images,workspace.pages[1].media.images);
+const plan=planGroup(workspace.pages[0],workspace.pages[0].groups[0]);
+assert.deepEqual(plan.images.map(r=>r.id),[3,1]);assert.equal(plan.prompt,'<Picture 1> <Picture 2> <Picture 1> 0～4秒');
+assert.equal(planGroup(workspace.pages[0],{id:'none',number:1,seconds:4,prompt:'空镜'}).images.length,0);
+const saved=workspaceData(workspace);assert.equal(saved.pages[0].media.images.length,0);const restored=readWorkspace(JSON.stringify(saved));assert.equal(restored.sharedImages.length,3);assert.strictEqual(restored.pages[0].media.images,restored.pages[1].media.images);
+restored.sharedImages.splice(0,1);assert.equal(restored.pages[1].media.images.length,2);
+await assert.rejects(()=>parseFiles([...images,file('黑暗集会/a/提示词.txt','@图片4 0～4秒')]),/图片数量/);
+console.log('PASS project-root library across nested pages, reference order/remapping, no implicit images, shared persistence and missing-image validation');

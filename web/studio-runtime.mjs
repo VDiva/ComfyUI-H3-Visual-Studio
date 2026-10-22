@@ -1,27 +1,27 @@
-import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.11';
-import {mountProxyCore} from './proxy-core.mjs?v=0.15.11';
-import {backgroundBatch} from './background-batch.mjs?v=0.15.11';
-import {generationSummary} from './generation-summary.mjs?v=0.15.11';
-import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.11';
-import {openVideoCompare} from './video-compare.mjs?v=0.15.11';
-import {mountDependencies} from './dependencies.mjs?v=0.15.11';
-import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.11';
-import {mountSelfLift} from './selflift.mjs?v=0.15.11';
-import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.11';
-import {executionProgress} from './execution-progress.mjs?v=0.15.11';
-import {mountExecutionHealth} from './execution-health.mjs?v=0.15.11';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.11';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.15.11';
-import {openFolderTemplate} from './folder-template.mjs?v=0.15.11';
-import {livePreview} from './live-preview.mjs?v=0.15.11';
-import {modelDownloader} from './model-download.mjs?v=0.15.11';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.11';
-import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.11';
+import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.16';
+import {mountProxyCore} from './proxy-core.mjs?v=0.15.16';
+import {backgroundBatch} from './background-batch.mjs?v=0.15.16';
+import {generationSummary} from './generation-summary.mjs?v=0.15.16';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.16';
+import {openVideoCompare} from './video-compare.mjs?v=0.15.16';
+import {mountDependencies} from './dependencies.mjs?v=0.15.16';
+import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.16';
+import {mountSelfLift} from './selflift.mjs?v=0.15.16';
+import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.16';
+import {executionProgress} from './execution-progress.mjs?v=0.15.16';
+import {mountExecutionHealth} from './execution-health.mjs?v=0.15.16';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.16';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.15.16';
+import {openFolderTemplate} from './folder-template.mjs?v=0.15.16';
+import {livePreview} from './live-preview.mjs?v=0.15.16';
+import {modelDownloader} from './model-download.mjs?v=0.15.16';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.16';
+import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.16';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.11';
-import './folder-core.js?v=0.15.11';
-import {defaultProject,readProject,readWorkspace,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.11';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.16';
+import {parseFiles as parseProjectFiles,FOLDER_PARSER_VERSION} from './folder-parser.mjs?v=0.15.16';
+import {defaultProject,readProject,readWorkspace,workspaceData,bindSharedMedia,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.16';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -53,13 +53,13 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.11</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.16</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组导演台API</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
  <div class="row"><span class="title">工作模式</span><select id="mode"><option value="reference">参考素材 → 生视频</option><option value="auto_character">自动生成人物参考图 → 生视频</option></select><span class="muted">模式按页面保存</span></div>
  <div id="character-panel" class="library" hidden><div class="row"><span class="title grow">人物参考图 · Qwen-Image-2.1 Turbo</span><button id="extract-characters">从提示词识别人物</button><button id="add-character">添加人物</button><button id="generate-characters">只生成/更新人物图</button></div><p class="muted">先提取人物外貌设定，可编辑后生图；同一页按人物复用，不为每个素材组重复生成。缺少明确人物标签时请补充设定。</p><details><summary>生图模型与风格设置（首次需下载模型）</summary><div id="image-settings" class="row"></div><textarea id="image-style" style="min-height:65px" placeholder="统一人物参考图画风"></textarea><a href="https://huggingface.co/Comfy-Org/Qwen-Image-2.1" target="_blank" rel="noopener">官方模型下载</a></details><div id="characters"></div></div>
- <div class="library"><div class="row"><span class="title">公共素材库</span><button data-tab="images">图片</button><button data-tab="audios">音频</button><button data-tab="videos">视频</button><span id="counts" class="muted grow"></span><button id="upload">添加公共素材</button></div><div id="gallery" class="gallery"></div><div class="muted">公共库不限保存数量；分组用 &lt;Picture N&gt;、&lt;Audio N&gt;、&lt;Video N&gt; 引用所需素材。</div></div>
+ <div class="library"><div class="row"><span class="title">公共素材库</span><button data-tab="images">图片</button><button data-tab="audios">音频</button><button data-tab="videos">视频</button><span id="counts" class="muted grow"></span><button id="upload">添加公共素材</button></div><div id="gallery" class="gallery"></div><div class="muted">项目共享图片库不限保存数量；分组用 &lt;Picture N&gt;、&lt;Audio N&gt;、&lt;Video N&gt; 引用所需素材。</div></div>
  <details class="settings"><summary>官方生成设置与公共提示词</summary><div class="row" id="settings"></div><textarea id="common" style="min-height:65px" placeholder="公共提示词（与每组提示词合并）"></textarea></details>
  <div id="timeline" class="timeline"></div>
  <div class="row"><span class="title">素材组</span><span id="summary" class="muted grow"></span><button id="all">全选</button><button id="none">取消全选</button><button id="add">添加分组</button></div>
@@ -90,7 +90,7 @@ function attach(node){
  let expanded=false,placeholder=null,oldHostStyle='',globalWasHidden=false;
  function toggleExpanded(force){const next=force??!expanded;if(next===expanded)return;expanded=next;if(expanded){const globalPanel=document.getElementById('h3-global-import');globalWasHidden=globalPanel?.hidden||false;if(globalPanel){globalPanel.hidden=true;globalPanel.style.visibility='hidden';}placeholder=document.createComment('h3-widget');host.before(placeholder);oldHostStyle=host.style.cssText;document.body.append(host);host.style.cssText='position:fixed;inset:1vh 1vw;width:98vw;height:98vh;z-index:2147483646;';$('expand').textContent='收起大面板（Esc）';}else{const globalPanel=document.getElementById('h3-global-import');if(globalPanel){globalPanel.hidden=globalWasHidden;globalPanel.style.visibility=globalWasHidden?'hidden':'';}if(placeholder?.parentNode)placeholder.replaceWith(host);host.style.cssText=oldHostStyle;$('expand').textContent='展开大面板';}}
  const escape=e=>{if(e.key==='Escape'&&expanded)toggleExpanded(false);};document.addEventListener('keydown',escape);$('expand').onclick=()=>toggleExpanded();
- const persist=()=>{widget.value=JSON.stringify(workspace);node.setDirtyCanvas?.(true,true);};
+ const persist=()=>{widget.value=JSON.stringify(workspaceData(workspace));node.setDirtyCanvas?.(true,true);};
  function log(text){$('status').textContent=text;}
  const generationInfo=document.createElement('div');generationInfo.id='generation-summary';generationInfo.className='status';generationInfo.style.cssText='white-space:pre-wrap;flex-shrink:0';$('status').before(generationInfo);
  const batchInfo=document.createElement('div');batchInfo.id='batch-status';batchInfo.className='status';$('status').before(batchInfo);
@@ -142,7 +142,7 @@ function attach(node){
    const el=document.createElement(tab==='images'?'img':tab==='audios'?'audio':'video');
    if(tab!=='images'){el.controls=true;el.preload='none';}else el.loading='lazy';el.src=view(row);card.append(el);
    const name=document.createElement('small');name.textContent=`${{images:'图片',audios:'音频',videos:'视频'}[tab]}${row.id} · ${row.name||row.file}`;name.title=row.file;card.append(name);
-   const remove=document.createElement('button');remove.textContent='×';remove.title='移除公共引用（不删除服务器文件）';remove.onclick=()=>{if(busy)return;project.media[tab]=project.media[tab].filter(v=>v!==row);persist();render();};card.append(remove);$('gallery').append(card);
+   const remove=document.createElement('button');remove.textContent='×';remove.title='移除公共引用（不删除服务器文件）';remove.onclick=()=>{if(busy)return;project.media[tab].splice(project.media[tab].indexOf(row),1);persist();render();};card.append(remove);$('gallery').append(card);
   }
   $('timeline').replaceChildren();$('groups').replaceChildren();
   for(const [i,g] of project.groups.entries()){
@@ -228,14 +228,16 @@ function attach(node){
   uploadCache.set(file,value);return value;
  }
  $('folder').onclick=()=>$('folder-input').click();
- async function chapterPage(chapter,mode=project.mode){
+ async function chapterPage(chapter,mode=project.mode,sharedImages=null,sharedMedia={}){
   const next=defaultProject();next.pageId=uuid();next.name=chapter.name.split('/').at(-1);next.sourcePath=chapter.name;next.settings={...project.settings,steps:8,sampler:'euler',acceleration:'inherit'};next.mode=mode;next.imageSettings=structuredClone(project.imageSettings);next.finishing={...structuredClone(project.finishing),refine:false,upscale:'off'};next.audioReference=project.audioReference;applyDirectorPreset(next,true);const maps={images:new Map(),audios:new Map(),videos:new Map()};
   for(const [key,shared,local] of [['images','sharedImages','images'],['audios','sharedAudios','audios'],['videos','sharedVideos','videos']]){
+   if(key!=='images'&&sharedMedia[key]){next.media[key]=sharedMedia[key];continue;}
+   if(key==='images'&&sharedImages){next.media.images=sharedImages;next.projectImageLibrary=true;continue;}
    const list=chapter[shared]||[];
    for(const [i,file] of list.entries()){log(`${next.name}：公共${key} ${i+1}/${list.length} 上传中`);const value=await upload(file);next.media[key].push({id:i+1,name:file.name,file:value});maps[key].set(file,i+1);}
    if(!chapter[shared])for(const g of chapter.groups)for(const file of g[local]||[])if(!maps[key].has(file)){const id=next.media[key].length+1;next.media[key].push({id,name:file.name,file:await upload(file)});maps[key].set(file,id);}
   }
-  next.groups=chapter.groups.map(g=>{let prompt=g.prompt;for(const [key,tag,shared,label] of [['images','Picture','sharedImages','图片'],['audios','Audio','sharedAudios','音频'],['videos','Video','sharedVideos','视频']])if(!chapter[shared]&&!(mode==='auto_character'&&key==='images')){const re=new RegExp(`<${tag}\\s+(\\d+)>|@${label}(\\d+)(?:\\.[a-z0-9]+)?`,'gi');prompt=prompt.replace(re,(_,a,b)=>`<${tag} ${maps[key].get(g[key][Number(a||b)-1])}>`);}return {id:uuid(),number:g.number,seconds:g.seconds,prompt,selected:true};});
+  next.groups=chapter.groups.map(g=>{let prompt=g.prompt;for(const [key,tag,shared,label] of [['images','Picture','sharedImages','图片'],['audios','Audio','sharedAudios','音频'],['videos','Video','sharedVideos','视频']])if(!chapter[shared]&&!(mode==='auto_character'&&key==='images')){const re=new RegExp(`<${tag}\\s+(\\d+)>|@${label}(\\d+)(?:\\.[a-z0-9]+)?`,'gi');prompt=prompt.replace(re,(_,a,b)=>`<${tag} ${maps[key].get(g[key][Number(a||b)-1])}>`);}return {id:uuid(),number:g.number,name:g.name,seconds:g.seconds,prompt,selected:true};});
   if(next.mode==='auto_character'){next.characters=discoverCharacters(next);}else next.groups.forEach(g=>planGroup(next,g));return next;
  }
  async function importChapters(items,{mode=project.mode}={}){
@@ -244,20 +246,36 @@ function attach(node){
   setBusy(true);stop=false;
   try{
    const added=[];
-   for(const chapter of items){if(stop||disposed)throw Error('已取消导入；原有页面保留');added.push(await chapterPage(chapter,mode));}
+   const roots=new Set(items.map(c=>c.sharedImageRoot).filter(Boolean));
+   if(roots.size>1||(roots.size&&items.some(c=>!c.sharedImageRoot)))throw Error('请一次导入一个完整项目，所有页面共用项目根参考图');
+   let sharedImages=null;
+   if(roots.size){sharedImages=[];const library=items[0].sharedImages;const wanted=[...new Set(items.flatMap(c=>c.groups.flatMap(g=>[...g.prompt.matchAll(/<\s*Picture\s+(\d+)\s*>|@图片(\d+)/gi)].map(m=>Number(m[1]||m[2])))))];
+    for(const id of wanted){if(stop||disposed)throw Error('已取消导入');const file=library[id-1];if(!file)throw Error('项目参考图缺失：@图片'+id);log('上传项目共享参考图 @图片'+id);sharedImages.push({id,name:file.name,file:await upload(file)});}
+   }
+   const sharedMedia={};
+   for(const [key,field,tag,label] of [['audios','sharedAudios','Audio','音频'],['videos','sharedVideos','Video','视频']]){
+    const pools=items.map(c=>c[field]);const library=pools.find(Boolean);
+    if(library&&pools.some(p=>p&&p!==library))continue;
+    if(!roots.size&&!library)continue;
+    sharedMedia[key]=[];
+    const re=new RegExp('<\\s*'+tag+'\\s+(\\d+)\\s*>|@'+label+'(\\d+)','gi');
+    const wanted=[...new Set(items.flatMap(c=>c.groups.flatMap(g=>[...g.prompt.matchAll(re)].map(m=>Number(m[1]||m[2])))))];
+    for(const id of wanted){if(stop||disposed)throw Error('已取消导入');const file=library?.[id-1];if(!file)throw Error('项目公共资源缺失：@'+label+id);log('上传项目共享资源 @'+label+id);sharedMedia[key].push({id,name:file.name,file:await upload(file)});}
+   }
+   for(const chapter of items){if(stop||disposed)throw Error('已取消导入；原有页面保留');added.push(await chapterPage(chapter,mode,sharedImages,sharedMedia));}
    if(stop||disposed)throw Error('已取消导入；原有页面保留');
-   workspace=readWorkspace({version:1,pages:added,activePageId:added[0].pageId});
+   workspace=readWorkspace({version:1,...(sharedImages?{sharedImages}:{}),...(sharedMedia.audios?{sharedAudios:sharedMedia.audios}:{}),...(sharedMedia.videos?{sharedVideos:sharedMedia.videos}:{}),pages:added,activePageId:added[0].pageId});
    project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;persist();syncSettings();render();
    log(`已清除旧工作区并导入${added.length}个文件夹页面；旧页面与结果记录已替换，服务器素材及成片文件未删除。已保存到节点工程数据，尚未提交生成。`);
    return added.length;
   }finally{setBusy(false);}
  }
- $('folder-input').onchange=async()=>{try{const items=await globalThis.H3FolderCore.parseFiles([...$('folder-input').files],{allowNoImages:project.mode==='auto_character'});await importChapters(items);}catch(error){log('导入未提交，原有页面保留：'+error.message);}finally{$('folder-input').value='';}};
- $('add-page').onclick=()=>{if(busy)return;const page=defaultProject();page.pageId=uuid();page.name='新页面 '+(workspace.pages.length+1);workspace.pages.push(page);workspace.activePageId=page.pageId;project=page;selected=0;syncSettings();persist();render();};
- $('delete-page').onclick=()=>{if(busy)return;workspace.pages=workspace.pages.filter(p=>p!==project);if(!workspace.pages.length){const p=defaultProject();p.pageId=uuid();workspace.pages.push(p);}project=workspace.pages[0];workspace.activePageId=project.pageId;selected=0;syncSettings();persist();render();};
+ $('folder-input').onchange=async()=>{try{const items=await parseProjectFiles([...$('folder-input').files],{allowNoImages:project.mode==='auto_character'});await importChapters(items);}catch(error){log('导入未提交，原有页面保留：'+error.message);}finally{$('folder-input').value='';}};
+ $('add-page').onclick=()=>{if(busy)return;const page=defaultProject();page.pageId=uuid();page.name='新页面 '+(workspace.pages.length+1);bindSharedMedia(workspace,page);workspace.pages.push(page);workspace.activePageId=page.pageId;project=page;selected=0;syncSettings();persist();render();};
+ $('delete-page').onclick=()=>{if(busy)return;workspace.pages=workspace.pages.filter(p=>p!==project);if(!workspace.pages.length){const p=defaultProject();p.pageId=uuid();bindSharedMedia(workspace,p);workspace.pages.push(p);}project=workspace.pages[0];workspace.activePageId=project.pageId;selected=0;syncSettings();persist();render();};
  $('upload').onclick=()=>{$('media-input').accept=tab==='images'?'image/*':tab==='audios'?'audio/*':'video/*';$('media-input').click();};
  $('media-input').onchange=async e=>{if(busy)return;setBusy(true);try{const added=[];let id=project.media[tab].reduce((n,r)=>Math.max(n,r.id),0);for(const file of e.target.files)added.push({id:++id,name:file.name,file:await upload(file)});project.media[tab].push(...added);persist();render();log('公共素材已添加。');}catch(error){log(error.message);}finally{setBusy(false);$('media-input').value='';}};
- $('save').onclick=()=>{persist();download(workspace,'H3工作区.h3-workspace.json');};$('open').onclick=()=>$('json-input').click();
+ $('save').onclick=()=>{persist();download(workspaceData(workspace),'H3工作区.h3-workspace.json');};$('open').onclick=()=>$('json-input').click();
  $('json-input').onchange=async e=>{try{const file=e.target.files[0];if(!file)return;workspace=readWorkspace(await file.text());project=workspace.pages.find(p=>p.pageId===workspace.activePageId);selected=0;persist();syncSettings();render();log('工程已打开；素材路径对应当前服务器的 input 目录。');}catch(error){log('工程读取失败：'+error.message);}};
  async function waitJob(id){
   let missing=0;

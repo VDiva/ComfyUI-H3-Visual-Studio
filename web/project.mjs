@@ -1,9 +1,9 @@
-import {applyDirectorPreset} from './director-recipe.mjs?v=0.15.11';
-import {directorCoreRequest} from './director-core.mjs?v=0.15.11';
-import {defaultSelfLift} from './selflift.mjs?v=0.15.11';
-import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.15.11';
-import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.15.11';
-import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.15.11';
+import {applyDirectorPreset} from './director-recipe.mjs?v=0.15.16';
+import {directorCoreRequest} from './director-core.mjs?v=0.15.16';
+import {defaultSelfLift} from './selflift.mjs?v=0.15.16';
+import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.15.16';
+import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.15.16';
+import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.15.16';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];
@@ -33,11 +33,15 @@ export function readWorkspace(raw) {
     if(!value.pages.length)throw Error('工作区至少需要一页');
     const ids=new Set();
     const pages=value.pages.map((row,i)=>{const page=readProject(row);page.pageId=row.pageId||'page-'+i;if(ids.has(page.pageId))throw Error('页面ID重复');ids.add(page.pageId);return page;});
-    return {version:1,pages,activePageId:ids.has(value.activePageId)?value.activePageId:pages[0].pageId};
+    const shared={};
+    for(const [key,field] of [['images','sharedImages'],['audios','sharedAudios'],['videos','sharedVideos']])if(value[field]){const pool=readProject({media:{[key]:value[field]}}).media[key];shared[field]=pool;for(const page of pages){page.media[key]=pool;if(key==='images')page.projectImageLibrary=true;}}
+    return {version:1,...shared,pages,activePageId:ids.has(value.activePageId)?value.activePageId:pages[0].pageId};
   }
   const page=readProject(value);page.pageId=page.pageId||'page-initial';
   return {version:1,pages:[page],activePageId:page.pageId};
 }
+export function workspaceData(workspace){return {...workspace,pages:workspace.pages.map(p=>{const media={...p.media};for(const [key,field] of [['images','sharedImages'],['audios','sharedAudios'],['videos','sharedVideos']])if(workspace[field])media[key]=[];return {...p,media};})};}
+export function bindSharedMedia(workspace,page){for(const [key,field] of [['images','sharedImages'],['audios','sharedAudios'],['videos','sharedVideos']])if(workspace[field]){page.media[key]=workspace[field];if(key==='images')page.projectImageLibrary=true;}return page;}
 export function mergePages(workspace,incoming){
   const next=readWorkspace(workspace);
   for(const page of incoming){
@@ -65,9 +69,9 @@ export function planGroup(project,group) {
   for(const [key,tag,label,limit] of TAGS){
     const re=new RegExp(`<\\s*${tag}\\s+(\\d+)\\s*>|@${label}(\\d+)(?:\\.(?:png|jpe?g|webp|wav|mp3|flac|ogg|m4a|aac|mp4|mov|webm|mkv))?`,'gi');
     const pool=project.media[key],byId=new Map(pool.map(row=>[row.id,row]));
-    let wanted=[...new Set([...prompt.matchAll(re)].map(m=>Number(m[1]||m[2])))].sort((a,b)=>a-b);
+    let wanted=[...new Set([...prompt.matchAll(re)].map(m=>Number(m[1]||m[2])))];
     if(key==='audios'&&!project.audioReference){prompt=prompt.replace(re,'');plan.mapping[tag]={};continue;}
-    if(!wanted.length&&key==='images')wanted=pool.map(row=>row.id).sort((a,b)=>a-b);
+    if(!wanted.length&&key==='images'&&!project.projectImageLibrary)wanted=pool.map(row=>row.id).sort((a,b)=>a-b);
     if(wanted.length>limit)throw Error(`本组最多引用${limit}份${label}；公共库不限数量，请明确选择所需编号`);
     if(wanted.some(id=>!byId.has(id)||!byId.get(id).file))throw Error(`本组引用的${label}未上传或不存在`);
     const mapping=Object.fromEntries(wanted.map((id,i)=>[id,i+1]));
