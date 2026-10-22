@@ -1,14 +1,14 @@
-import {defaultVoices} from './dialogue.mjs?v=0.15.31';
-import {applyDirectorPreset} from './director-recipe.mjs?v=0.15.31';
-import {directorCoreRequest} from './director-core.mjs?v=0.15.31';
-import {defaultSelfLift} from './selflift.mjs?v=0.15.31';
-import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.15.31';
-import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.15.31';
-import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.15.31';
+import {defaultVoices} from './dialogue.mjs?v=0.15.32';
+import {applyDirectorPreset} from './director-recipe.mjs?v=0.15.32';
+import {directorCoreRequest} from './director-core.mjs?v=0.15.32';
+import {defaultSelfLift} from './selflift.mjs?v=0.15.32';
+import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.15.32';
+import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.15.32';
+import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.15.32';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];
-export const defaultProject = () => applyDirectorPreset({version:1,name:'未命名项目',mode:'reference',autoMerge:true,mergeDefaultsVersion:1,finishing:{...defaultFinishing(),refine:false,upscale:'off'},selflift:defaultSelfLift(),characters:[],imageSettings:defaultImageSettings(),commonPrompt:'',audioReference:false,voiceSettings:defaultVoices(),
+export const defaultProject = () => applyDirectorPreset({version:1,name:'未命名项目',mode:'reference',autoMerge:true,continuity:true,mergeDefaultsVersion:1,finishing:{...defaultFinishing(),refine:false,upscale:'off'},selflift:defaultSelfLift(),characters:[],imageSettings:defaultImageSettings(),commonPrompt:'',audioReference:false,voiceSettings:defaultVoices(),
   settings:{width:864,height:480,steps:8,seed:666,sampler:'euler',scheduler:'simple',acceleration:'inherit'},
   media:{images:[],audios:[],videos:[]},groups:[]},true);
 export function readProject(raw) {

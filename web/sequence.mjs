@@ -1,4 +1,4 @@
-import {compileRequest} from './project.mjs?v=0.15.31';
+import {compileRequest} from './project.mjs?v=0.15.32';
 export function compileSequence(base,project,groups){
  if(groups.length<2)throw Error('多段成片至少需要两组');
  const frameSequence=groups.some(g=>g.firstFrame?.file||g.lastFrame?.file||g.frameMode==='fl2v');

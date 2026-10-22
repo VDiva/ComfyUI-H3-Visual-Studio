@@ -1,4 +1,4 @@
-import {isOriginalVideo} from './finishing.mjs?v=0.15.31';
+import {isOriginalVideo} from './finishing.mjs?v=0.15.32';
 export function backgroundBatch({api,getPage,persist,onUpdate,log}){
  let disposed=false,timer=null,checking=false,generation=0;
  const active=s=>['queued','running','merging'].includes(s);

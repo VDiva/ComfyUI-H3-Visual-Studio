@@ -153,4 +153,4 @@
     });
   }
 export {parseFiles};
-export const FOLDER_PARSER_VERSION='0.15.31';
+export const FOLDER_PARSER_VERSION='0.15.32';

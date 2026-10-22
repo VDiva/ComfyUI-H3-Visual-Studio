@@ -21,3 +21,5 @@ const mixed=compileSequence(base,p,groups.map((g,i)=>i===0?{...g,firstFrame:{fil
 console.log('PASS upstream-style first-frame group plus empty continuation groups on one FL2V timeline');
 
 assert.equal(readProject({autoMerge:false}).autoMerge,true);assert.equal(readProject({autoMerge:false,mergeDefaultsVersion:1}).autoMerge,false);
+
+assert.equal(defaultProject().continuity,true);assert.equal(readProject({continuity:false}).continuity,false);assert.equal(readProject({}).continuity,true);
