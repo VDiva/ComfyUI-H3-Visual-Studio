@@ -26,6 +26,9 @@ class H3VisualProject:
 from .frame_upscale import H3FrameUpscale
 NODE_CLASS_MAPPINGS = {"H3VisualProject": H3VisualProject,"H3FrameUpscale":H3FrameUpscale}
 NODE_DISPLAY_NAME_MAPPINGS = {"H3VisualProject": "H3 可视化工作室（Director内核）","H3FrameUpscale":"H3 逐帧模型超分"}
+from .dialogue_audio import NODE_CLASS_MAPPINGS as VOICE_NODES, NODE_DISPLAY_NAME_MAPPINGS as VOICE_NAMES
+NODE_CLASS_MAPPINGS.update(VOICE_NODES)
+NODE_DISPLAY_NAME_MAPPINGS.update(VOICE_NAMES)
 WEB_DIRECTORY = "./web"
 from .director_bridge import NODE_CLASS_MAPPINGS as DIRECTOR_NODE_CLASS_MAPPINGS
 NODE_CLASS_MAPPINGS.update(DIRECTOR_NODE_CLASS_MAPPINGS)

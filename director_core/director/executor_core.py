@@ -1,3 +1,4 @@
+# Modified by H3 Visual Studio: finalize locked dialogue before audio export.
 """Run MiniMax H3 Director segments through the official ComfyUI core pipeline."""
 
 from __future__ import annotations

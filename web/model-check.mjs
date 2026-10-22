@@ -10,6 +10,8 @@ export function modelReport(info,prompts){
  const missing=new Set(),nodes=new Set(),unknown=new Set(),checked=new Set();
  for(const prompt of prompts)for(const node of Object.values(prompt||{})){
   if(node.class_type==='H3VisualProject')continue;
+  const deps=node.class_type==='H3QwenClone'?['Qwen3TTSVoiceClone']:node.class_type==='H3PrepareDialogue'?['MiniMaxH3DialogueAudioLock','MiniMaxH3DialogueAudioFinalize']:node.class_type==='H3VoiceDesign'?['Qwen3TTSVoiceDesign']:[];
+  for(const name of deps)if(!info[name])nodes.add(name);
   const definition=info[node.class_type];if(!definition)nodes.add(node.class_type);
   const loader=['H3StudioDirectorRefine','H3StudioDirectorSelfLift'].includes(node.class_type)?['latent_upscale_model','latent_upscale_models']:loaders[node.class_type];if(!loader)continue;
   for(const field of [loader[0],loader[2]].filter(Boolean)){

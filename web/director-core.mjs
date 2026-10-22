@@ -1,4 +1,5 @@
-import {finishingSettings,finishingCanvas} from './finishing.mjs?v=0.15.16';
+import {compileDialogue} from './dialogue.mjs?v=0.15.21';
+import {finishingSettings,finishingCanvas} from './finishing.mjs?v=0.15.21';
 
 // Compile Studio projects to the bundled Director executor, keeping the selected
 // model/LoRA graph as the source of truth. No upstream timeline UI is required.
@@ -56,6 +57,8 @@ export function directorCoreRequest(prompt, project, plan, saveId) {
    lowres_scale:s.lowScale,sampler_mode:'euler',native_low_carry:true,latent_upscale_model:finish.latentModel||s.model,
    latent_upsample:'bilinear',rho:0,w_min:0.5,w_max:1,enable_latent_chunking:!!s.chunking,enable_tiling:false,tile_count:2,tile_overlap:128});
  }
+ const dialogue=compileDialogue(add,project,{...plan,seconds:plan.length/24});
+ if(dialogue)inputs.dialogue=dialogue;
  const core=add('H3StudioDirector',inputs);
  let images=core;
  if(['model','lanczos'].includes(finish.upscale)){

@@ -12,7 +12,7 @@ assert b'Apache License' in license and b'Version 2.0' in license
 assert (root/'NOTICE').is_file() and (core/'UPSTREAM_README.md').is_file()
 manifest=json.loads((core/'source-manifest.json').read_text(encoding='utf-8-sig'))
 normalized=json.loads((core/'source-normalized-manifest.json').read_text(encoding='utf-8-sig'))
-assert set(normalized)==set(manifest)-{'director/refine_pack.py','director/core_sampling.py','director/refine_sampling.py'}
+assert set(normalized)==set(manifest)-{'director/refine_pack.py','director/core_sampling.py','director/refine_sampling.py','director/executor_core.py'}
 for name,digest in manifest.items():
  path=core/name
  assert path.is_file(),name

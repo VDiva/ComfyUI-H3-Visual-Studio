@@ -15,3 +15,5 @@ The original byte hashes remain in source-manifest.json. Git checkout can conver
 See the root NOTICE and LICENSE, director_core/LICENSE, and the preserved upstream README. Existing copyright and attribution comments remain in the vendored sources. Modified upstream files carry a change notice. This package does not claim authorship of the upstream runtime or endorsement from upstream maintainers.
 
 The former standalone latent/SelfLift adapters and their duplicate license file were removed in 0.14.1. The complete Apache-2.0 text is retained at the root and inside director_core. Models and third-party dependencies retain their own licenses.
+
+配音集成补充：本地修改 core_sampling.py，在每次采样前应用对白锁定；修改 executor_core.py，在最终音轨导出前恢复锁定对白。executor_core.py 从未修改上游文件的规范化哈希清单中排除，原始上游哈希仍保留在 source-manifest.json。

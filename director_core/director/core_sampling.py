@@ -150,6 +150,9 @@ def sample_single_stage(
         if on_phase:
             on_phase(phase, value)
 
+    from ...dialogue_audio import apply_dialogue_lock
+    positive, latent = apply_dialogue_lock(positive, latent)
+
     notify(phase_name, 0)
     model_use = model
     if apply_shift:

@@ -1,13 +1,14 @@
-import {applyDirectorPreset} from './director-recipe.mjs?v=0.15.16';
-import {directorCoreRequest} from './director-core.mjs?v=0.15.16';
-import {defaultSelfLift} from './selflift.mjs?v=0.15.16';
-import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.15.16';
-import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.15.16';
-import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.15.16';
+import {defaultVoices} from './dialogue.mjs?v=0.15.21';
+import {applyDirectorPreset} from './director-recipe.mjs?v=0.15.21';
+import {directorCoreRequest} from './director-core.mjs?v=0.15.21';
+import {defaultSelfLift} from './selflift.mjs?v=0.15.21';
+import {defaultImageSettings,normalizeImageSettings,videoWithCharacters} from './characters.mjs?v=0.15.21';
+import {accelerateApi,effectiveVideoSettings,accelerationMode} from './acceleration.mjs?v=0.15.21';
+import {defaultFinishing,isOriginalVideo} from './finishing.mjs?v=0.15.21';
 const TAGS = [
   ['images','Picture','图片',9],['audios','Audio','音频',3],['videos','Video','视频',3],
 ];
-export const defaultProject = () => applyDirectorPreset({version:1,name:'未命名项目',mode:'reference',autoMerge:false,finishing:{...defaultFinishing(),refine:false,upscale:'off'},selflift:defaultSelfLift(),characters:[],imageSettings:defaultImageSettings(),commonPrompt:'',audioReference:false,
+export const defaultProject = () => applyDirectorPreset({version:1,name:'未命名项目',mode:'reference',autoMerge:false,finishing:{...defaultFinishing(),refine:false,upscale:'off'},selflift:defaultSelfLift(),characters:[],imageSettings:defaultImageSettings(),commonPrompt:'',audioReference:false,voiceSettings:defaultVoices(),
   settings:{width:864,height:480,steps:8,seed:666,sampler:'euler',scheduler:'simple',acceleration:'inherit'},
   media:{images:[],audios:[],videos:[]},groups:[]},true);
 export function readProject(raw) {

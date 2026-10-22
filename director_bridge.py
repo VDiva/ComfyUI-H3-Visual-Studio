@@ -14,6 +14,7 @@ class H3StudioDirector(MiniMaxH3Director):
     @classmethod
     def INPUT_TYPES(cls):
         schema = studio_schema(MiniMaxH3Director)
+        schema.setdefault('optional', {})['dialogue'] = ('H3_STUDIO_DIALOGUE',)
         schema['required']['task_type'] = (['r2v'], {'default': 'r2v'})
         return schema
 

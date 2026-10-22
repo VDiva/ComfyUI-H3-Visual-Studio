@@ -1,27 +1,28 @@
-import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.16';
-import {mountProxyCore} from './proxy-core.mjs?v=0.15.16';
-import {backgroundBatch} from './background-batch.mjs?v=0.15.16';
-import {generationSummary} from './generation-summary.mjs?v=0.15.16';
-import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.16';
-import {openVideoCompare} from './video-compare.mjs?v=0.15.16';
-import {mountDependencies} from './dependencies.mjs?v=0.15.16';
-import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.16';
-import {mountSelfLift} from './selflift.mjs?v=0.15.16';
-import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.16';
-import {executionProgress} from './execution-progress.mjs?v=0.15.16';
-import {mountExecutionHealth} from './execution-health.mjs?v=0.15.16';
-import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.16';
-import {attachResourceEditor} from './resource-editor.mjs?v=0.15.16';
-import {openFolderTemplate} from './folder-template.mjs?v=0.15.16';
-import {livePreview} from './live-preview.mjs?v=0.15.16';
-import {modelDownloader} from './model-download.mjs?v=0.15.16';
-import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.16';
-import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.16';
+import {mountVoiceSettings} from './dialogue.mjs?v=0.15.21';
+import {mountPluginUpdater,pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.21';
+import {mountProxyCore} from './proxy-core.mjs?v=0.15.21';
+import {backgroundBatch} from './background-batch.mjs?v=0.15.21';
+import {generationSummary} from './generation-summary.mjs?v=0.15.21';
+import {qualityVariants,openQualitySetup} from './quality-compare.mjs?v=0.15.21';
+import {openVideoCompare} from './video-compare.mjs?v=0.15.21';
+import {mountDependencies} from './dependencies.mjs?v=0.15.21';
+import {mountDirectorRecipe,applyDirectorPreset} from './director-recipe.mjs?v=0.15.21';
+import {mountSelfLift} from './selflift.mjs?v=0.15.21';
+import {mountFinishing,syncFinishingResolution} from './finishing.mjs?v=0.15.21';
+import {executionProgress} from './execution-progress.mjs?v=0.15.21';
+import {mountExecutionHealth} from './execution-health.mjs?v=0.15.21';
+import {mountResolution,resolutionGuide} from './resolution.mjs?v=0.15.21';
+import {attachResourceEditor} from './resource-editor.mjs?v=0.15.21';
+import {openFolderTemplate} from './folder-template.mjs?v=0.15.21';
+import {livePreview} from './live-preview.mjs?v=0.15.21';
+import {modelDownloader} from './model-download.mjs?v=0.15.21';
+import {modelReport,reportText,assertModels} from './model-check.mjs?v=0.15.21';
+import {ACCELERATION_MODES,effectiveVideoSettings,accelerationSummary} from './acceleration.mjs?v=0.15.21';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.16';
-import {parseFiles as parseProjectFiles,FOLDER_PARSER_VERSION} from './folder-parser.mjs?v=0.15.16';
-import {defaultProject,readProject,readWorkspace,workspaceData,bindSharedMedia,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.16';
+import {defaultImageSettings,discoverCharacters,charactersForGroup,referenceReady,imageRecipe,compileCharacterImage,checkImageModels,generatedImage,videoWithCharacters} from './characters.mjs?v=0.15.21';
+import {parseFiles as parseProjectFiles,FOLDER_PARSER_VERSION} from './folder-parser.mjs?v=0.15.21';
+import {defaultProject,readProject,readWorkspace,workspaceData,bindSharedMedia,mergePages,planGroup,compileRequest,resultVideos,runSequential,originalVideos} from './project.mjs?v=0.15.21';
 
 const states=new WeakMap();
 const preparedRequests=new WeakSet();
@@ -53,7 +54,7 @@ function attach(node){
  project=workspace.pages.find(p=>p.pageId===workspace.activePageId);
  const uploadCache=new WeakMap();
  root.innerHTML=`<style>${style}</style><div class="shell">
- <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.16</span></div>
+ <div class="head"><h2>H3 可视化工作室</h2><span class="badge">官方采样流程</span><span class="grow"></span><button id="expand">展开大面板</button><span class="muted">v0.15.21</span></div>
  <div class="layout"><aside class="pages"><div class="row"><span class="title grow">页面</span><button id="add-page">＋</button></div><div id="page-list"></div><div id="resolution-guide" class="muted" style="white-space:pre-line;flex-shrink:0;border-top:1px solid #334959;padding-top:8px"></div><button id="delete-page" style="margin-top:12px">删除当前页</button></aside><main class="content"><fieldset id="edit">
  <div class="tools"><button id="folder" title="新目录导入成功后替换全部现有页面；失败保留原工作区">导入目录并替换工作区</button><button id="open">打开工程</button><button id="save">保存工程</button><button id="install-models" class="primary">一键安装所需模型</button><button id="check-models">检查全部模型</button><button id="export">导出本组导演台API</button></div>
  <div class="row"><span class="muted">工程</span><input id="name" class="grow" placeholder="工程名称"><label><input id="audio" type="checkbox">启用参考音频</label><span class="muted">最终声音始终由 H3 解码</span></div>
@@ -128,11 +129,12 @@ function attach(node){
  const finishingController=mountFinishing({onSettingsChanged:()=>render(),container:panels.finishing,api,getProject:()=>project,getGroup:current,persist,preview,view,log,isBusy:()=>busy,setBusy,onQueued:(id,prompt)=>progressTracker.watch(id,prompt,'已有视频AI超分'),onFinished:id=>progressTracker.finish(id),openModelDownloads:async()=>{showPanel('models');const key=(project.selflift?.enabled||project.finishing?.upscale==='latent')?'models/latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors':'models/upscale_models/RealESRGAN_x4.pth';await downloader.show({missing:[key]});log('点击模型旁的下载按钮，安装完成后返回视频精修与放大，刷新并选择模型。');}});
  const selfliftController=mountSelfLift({container:panels.finishing,getProject:()=>project,persist,onChange:()=>{syncSettings();render();},log});
  const recipeController=mountDirectorRecipe({container:panels.finishing,getProject:()=>project,persist,onChange:()=>{syncSettings();render();},log});
+ const voiceController=mountVoiceSettings({container:panels.characters,getProject:()=>project,persist,upload,isBusy:()=>busy,log});
  function numberGroups(){project.groups.forEach((g,i)=>g.number=i+1);selected=Math.max(0,Math.min(selected,project.groups.length-1));}
  function render(){
   $('page-list').replaceChildren();
   for(const page of workspace.pages){const button=document.createElement('button');button.className='page'+(page===project?' active':'');button.textContent=page.name;button.title=page.sourcePath||page.name;button.onclick=()=>{if(busy)return;project=page;workspace.activePageId=page.pageId;selected=0;syncSettings();persist();render();void batchController.query({discover:true});};$('page-list').append(button);}
-  numberGroups();$('mode').value=project.mode;$('character-panel').hidden=project.mode!=='auto_character';renderCharacters();$('name').value=project.name;$('common').value=project.commonPrompt;commonResourceEditor.sync();$('audio').checked=!!project.audioReference;
+  voiceController.sync();numberGroups();$('mode').value=project.mode;$('character-panel').hidden=project.mode!=='auto_character';renderCharacters();$('name').value=project.name;$('common').value=project.commonPrompt;commonResourceEditor.sync();$('audio').checked=!!project.audioReference;
   $('auto-merge').checked=project.autoMerge===true;
   $('counts').textContent=`${project.media.images.length}图 · ${project.media.audios.length}音频 · ${project.media.videos.length}视频`;
   $('summary').textContent=`${project.groups.length}组 · ${project.groups.reduce((n,g)=>n+Number(g.seconds||0),0).toFixed(1)}秒请求时长`;
