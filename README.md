@@ -1,4 +1,4 @@
-# H3 可视化工作室 0.15.21
+# H3 可视化工作室 0.15.22
 
 使用 AIMixer / MiniMax H3 Director 开源内核，保留工作室的分段编辑、目录导入、公共素材、人物生图、后台批次、对比、视频处理和更新界面。仓库另附角色声音设计与试听、固定声线先配音后生成画面的工作流。
 
@@ -22,7 +22,7 @@
 2. 使用 ComfyUI 的 Python 安装 requirements.txt，重启 ComfyUI 并 Ctrl+F5。
 3. 进入工作室，在“模型与下载”检查模型和依赖，然后使用工作室的生成按钮。
 
-插件源码与在线更新源为 [VDiva/ComfyUI-H3-Visual-Studio](https://github.com/VDiva/ComfyUI-H3-Visual-Studio)。更新器读取该仓库默认分支，并下载检查时锁定的提交。
+插件默认镜像与在线更新源为 [Gitee：VDiva/comfy-ui-h3-visual-studio](https://gitee.com/VDiva/comfy-ui-h3-visual-studio.git)。更新器读取该仓库默认分支，按检查时锁定的提交读取版本和下载ZIP更新包；Gitee返回非ZIP网页时自动通过Git获取同一提交（服务器需安装Git）。私有仓库可在服务器配置 GITEE_TOKEN；GitHub Token 不用于该镜像。
 
 模型下载源可在下载区域手动选择：自动（仙宫云优先）、仅仙宫云、仅官方（Hugging Face）。默认自动：先直连hf.x-gpu.com，以首次模型信息请求检测可用性（8秒连接/读取超时）；正常下载使用60秒连接/读取超时，源不可用或校验失败时回退官方。仅指定源时不自动换源。选择保存在download-source.local.json，重启及插件更新后保留，仅影响新下载/重试；已提交的下载任务保持原选择。官方线路沿用代理配置，仙宫云不会收到HF Token。安装前仍校验大小和SHA256。
 
@@ -60,7 +60,7 @@
 
 根目录的model-catalog.json用于模型下载，version.json用于插件更新，均为运行必需文件。web/workflow-template.mjs是内置启动模板；tests/.fixtures中的JSON仅供测试。旧版工作流导出、历史说明、调研和旧FFmpeg构建说明已移出插件；不再附带examples目录。标准目录与AI交付规范.md由目录模板引用，予以保留。
 
-每次发布更新必须递增version.json中的版本号，并同步工作室显示版本、前端模块的?v=缓存版本和本说明标题；发布前运行tests/distribution.py检查版本一致性。完整源码上传到GitHub后，云端插件才能检测并下载此版本。
+每次发布更新必须递增version.json中的版本号，并同步工作室显示版本、前端模块的?v=缓存版本和本说明标题；发布前运行tests/distribution.py检查版本一致性。完整源码上传到Gitee默认更新仓库后，云端插件才能检测并下载此版本。
 
 0.14.3补回并保留Git中的两份测试JSON；源码完整性检查允许Git换行转换；更新包校验涵盖Director清单内的Python文件、适配器、关键前端和许可证。前端模块引用可用 `node --experimental-vm-modules tests/module-links.mjs` 单独检查。
 
@@ -88,4 +88,4 @@
 
 配音解析支持 Chinese、Japanese、English。提示词需写明每句对白的起止秒数、角色姓名/S编号及 `<d>[Chinese]台词</d>` 等语言标记。有声音样本的角色使用固定声线配音，未配置样本的角色由 H3 配音。每段最多64句，时间窗不可重叠或超出片段；配音超出预留时间时停止，不截断或自动加速。当前不支持 SelfLift，口型及说话归属仍需实际出片验收。
 
-版本核对：`version.json`、主工作室显示版本、前端缓存标记和配音模板统一为 `0.15.21`。配音面板位于工作室“人物设定”页，参考素材模式下也显示；上传角色声音样本后，生成流程自动编译配音及对白锁定节点。云端依赖和实际出片仍需按配音说明以短片段验证。
+版本核对：`version.json`、主工作室显示版本、前端缓存标记和配音模板统一为 `0.15.22`。配音面板位于工作室“人物设定”页，参考素材模式下也显示；上传角色声音样本后，生成流程自动编译配音及对白锁定节点。云端依赖和实际出片仍需按配音说明以短片段验证。

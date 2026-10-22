@@ -1,8 +1,10 @@
 """Explicit, fixed-repository plugin updates with staging, backup and rollback."""
 from pathlib import Path, PurePosixPath
-import copy, hashlib, io, json, os, re, shutil, stat, threading, time, urllib.error, urllib.parse, urllib.request, uuid, zipfile
+import base64, copy, hashlib, io, json, os, re, shutil, stat, subprocess, tempfile, threading, time, urllib.error, urllib.parse, urllib.request, uuid, zipfile
 
-REPOSITORY="VDiva/ComfyUI-H3-Visual-Studio"
+REPOSITORY="VDiva/comfy-ui-h3-visual-studio"
+REPOSITORY_URL="https://gitee.com/"+REPOSITORY
+API_URL="https://gitee.com/api/v5/repos/"+REPOSITORY
 PROJECT="ComfyUI-H3-Visual-Studio"
 STATE_FILE=".h3-update-state.json"
 MAX_ARCHIVE=512*1024**2
@@ -78,7 +80,7 @@ class PluginUpdater:
         self.root=Path(root).resolve();self.opener=opener;self.busy=busy;self.prepare=prepare;self.before_install=before_install
         self.lock=threading.RLock();self.candidate=None;self.worker=None
         self.current=manifest(json.loads((self.root/'version.json').read_text(encoding='utf-8-sig')))
-        self.state={"state":"idle","message":"点击检查更新，从指定GitHub仓库获取最新提交"}
+        self.state={"state":"idle","message":"点击检查更新，从指定Gitee仓库获取最新提交"}
     def snapshot(self):
         with self.lock:return {"repository":REPOSITORY,"current_version":self.current['version'],**copy.deepcopy(self.state)}
     def update(self,**values):
@@ -90,38 +92,42 @@ class PluginUpdater:
     def running(self):return self.snapshot()['state'] in {'checking','downloading','validating','installing'}
     def fetch(self,url,limit=2*1024**2):
         # URLs are constructed only from this fixed repository and validated SHA.
-        headers={"User-Agent":"H3-Visual-Studio-Updater","Accept":"application/vnd.github+json"}
-        token=os.environ.get('GITHUB_TOKEN')
-        if token:headers['Authorization']='Bearer '+token
+        headers={"User-Agent":"H3-Visual-Studio-Updater","Accept":"application/json"}
+        token=os.environ.get('GITEE_TOKEN')
+        if token:url+=('&' if '?' in url else '?')+urllib.parse.urlencode({'access_token':token})
         try:
             with self.opener(urllib.request.Request(url,headers=headers),timeout=60) as response:
                 data=response.read(limit+1)
-            if len(data)>limit:raise ValueError("GitHub响应过大")
+            if len(data)>limit:raise ValueError("Gitee响应过大")
             return json.loads(data)
         except urllib.error.HTTPError as error:
-            if error.code==404:raise ValueError("GitHub仓库、版本文件尚未公开或路径不存在，请先上传完整插件和version.json") from error
-            if error.code==409:raise ValueError("GitHub仓库还没有提交，请先上传完整插件") from error
-            if error.code in (401,403,429):raise ValueError("GitHub未授权或请求受限；私有仓库需在云端设置GITHUB_TOKEN，限流时稍后重试") from error
+            if error.code==404:raise ValueError("Gitee仓库、版本文件尚未公开或路径不存在，请先上传完整插件和version.json") from error
+            if error.code==409:raise ValueError("Gitee仓库还没有提交，请先上传完整插件") from error
+            if error.code in (401,403,429):raise ValueError("Gitee未授权或请求受限；私有仓库需在云端设置GITEE_TOKEN，限流时稍后重试") from error
             raise
     def check(self):
         with self.lock:
             if self.running() or self.restart_required:raise ValueError("正在检查/更新，或更新完成等待重启")
-            self.state={"state":"checking","message":"正在检查GitHub默认分支"};self.candidate=None
+            self.state={"state":"checking","message":"正在检查Gitee默认分支"};self.candidate=None
             self.worker=threading.Thread(target=self._check,daemon=True);self.worker.start()
         return self.snapshot()
     def _check(self):
         try:
             self.prepare()
-            repo=self.fetch('https://api.github.com/repos/'+REPOSITORY)
+            repo=self.fetch(API_URL)
             branch=repo.get('default_branch')
             if not isinstance(branch,str) or not branch:raise ValueError("仓库尚无默认分支或尚未上传文件")
-            commit=self.fetch('https://api.github.com/repos/'+REPOSITORY+'/commits/'+urllib.parse.quote(branch,safe=''))
+            commit=self.fetch(API_URL+'/commits/'+urllib.parse.quote(branch,safe=''))
             sha=commit.get('sha','')
-            if not re.fullmatch(r'[a-f0-9]{40}',sha):raise ValueError("GitHub提交信息无效")
+            if not re.fullmatch(r'[a-f0-9]{40}',sha):raise ValueError("Gitee提交信息无效")
             remote=None;subdir=''
             for prefix in ('',PROJECT+'/'):
                 try:
-                    content=self.fetch('https://raw.githubusercontent.com/'+REPOSITORY+'/'+sha+'/'+prefix+'version.json',65536)
+                    file=self.fetch(API_URL+'/contents/'+prefix+'version.json?ref='+sha,131072)
+                    if file.get('encoding')!='base64' or not isinstance(file.get('content'),str):raise ValueError('Gitee版本文件编码无效')
+                    data=base64.b64decode(file['content'])
+                    if len(data)>65536:raise ValueError('Gitee版本文件过大')
+                    content=json.loads(data.decode('utf-8-sig'))
                     remote=manifest(content);subdir=prefix.rstrip('/');break
                 except ValueError as error:
                     if '路径不存在' not in str(error):raise
@@ -135,7 +141,7 @@ class PluginUpdater:
             candidate={"commit":sha,"version":remote['version'],"subdir":subdir}
             with self.lock:
                 self.candidate=candidate
-                self.state={"state":"available" if available else "current","available":available,"remote_version":remote['version'],"commit":sha,"commit_url":'https://github.com/'+REPOSITORY+'/commit/'+sha,"message":reason,"checked":time.time()}
+                self.state={"state":"available" if available else "current","available":available,"remote_version":remote['version'],"commit":sha,"commit_url":REPOSITORY_URL+'/commit/'+sha,"message":reason,"checked":time.time()}
         except Exception as error:self.update(state='error',available=False,message=str(error))
     def install(self,sha):
         with self.lock:
@@ -151,6 +157,25 @@ class PluginUpdater:
         path=Path(path)
         if path.parent.resolve()!=self.root.parent or not path.name.startswith('.h3-update-') or not path.name.endswith('.disabled'):raise ValueError("暂存清理路径无效")
         if path.exists():shutil.rmtree(path)
+    def _git_archive(self, commit):
+        git=shutil.which('git')
+        if not git:raise ValueError('Gitee压缩包不可用，请在ComfyUI服务器安装Git后重试')
+        self.update(message='Gitee压缩包不可用，正在通过Git下载已锁定提交')
+        env={**os.environ,'GIT_TERMINAL_PROMPT':'0','GCM_INTERACTIVE':'Never'}
+        with tempfile.TemporaryDirectory(prefix='.h3-gitee-',dir=self.root.parent) as tmp:
+            checkout=Path(tmp)/'repo'
+            archive=Path(tmp)/'source.zip'
+            commands=([git,'init','--quiet',str(checkout)],
+                      [git,'-C',str(checkout),'fetch','--quiet','--depth=1',REPOSITORY_URL+'.git',commit],
+                      [git,'-C',str(checkout),'archive','--format=zip','--prefix='+PROJECT+'-'+commit+'/',
+                       '--output='+str(archive),'FETCH_HEAD'])
+            for command in commands:
+                try:subprocess.run(command,env=env,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=180)
+                except (subprocess.SubprocessError,OSError) as error:
+                    raise ValueError('无法通过Git获取Gitee更新，请检查服务器Git、网络及仓库访问权限') from error
+            if archive.stat().st_size>MAX_ARCHIVE:raise ValueError('更新压缩包超过512MB')
+            return archive.read_bytes()
+
     def _install(self,selected):
         token=uuid.uuid4().hex
         incoming=self.root.parent/('.h3-update-source-'+token+'.disabled')
@@ -160,9 +185,10 @@ class PluginUpdater:
         try:
             self.prepare()
             headers={"User-Agent":"H3-Visual-Studio-Updater"}
-            if os.environ.get('GITHUB_TOKEN'):headers['Authorization']='Bearer '+os.environ['GITHUB_TOKEN']
+            archive_url=REPOSITORY_URL+'/repository/archive/'+selected['commit']+'.zip'
+            if os.environ.get('GITEE_TOKEN'):archive_url+='?'+urllib.parse.urlencode({'access_token':os.environ['GITEE_TOKEN']})
             started=time.monotonic();payload=bytearray()
-            with self.opener(urllib.request.Request('https://codeload.github.com/'+REPOSITORY+'/zip/'+selected['commit'],headers=headers),timeout=60) as response:
+            with self.opener(urllib.request.Request(archive_url,headers=headers),timeout=60) as response:
                 total=int(response.headers.get('Content-Length',0) or 0)
                 if total>MAX_ARCHIVE:raise ValueError("更新压缩包超过512MB")
                 while True:
@@ -172,6 +198,9 @@ class PluginUpdater:
                     if len(payload)>MAX_ARCHIVE:raise ValueError("更新压缩包超过512MB")
                     self.update(bytes=len(payload),total=total,speed=len(payload)/max(.01,time.monotonic()-started))
             if total and len(payload)!=total:raise ValueError("更新包下载不完整，未覆盖插件")
+            if not zipfile.is_zipfile(io.BytesIO(payload)):
+                payload=bytearray(self._git_archive(selected['commit']))
+                self.update(bytes=len(payload),total=len(payload),speed=len(payload)/max(.01,time.monotonic()-started))
             self.update(state='validating',message='正在检查更新包结构与Python语法')
             with zipfile.ZipFile(io.BytesIO(payload)) as archive:expanded=sum(item.file_size for item in archive.infolist())
             if expanded>MAX_UNPACKED:raise ValueError("更新包解压内容过大")
@@ -180,7 +209,7 @@ class PluginUpdater:
             incoming.mkdir()
             info,managed=unpack(bytes(payload),incoming,selected['subdir'])
             if info['version']!=selected['version']:raise ValueError("更新包版本与检查结果不一致")
-            # Keep the proxy alive for every GitHub request, then stop an owned
+            # Keep the proxy alive for every Gitee request, then stop an owned
             # core before copying/swapping its executable and private settings.
             self.before_install()
             self.update(state='installing',message='正在替换插件并保留本地配置，完成后清理旧版本')
