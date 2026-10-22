@@ -1,6 +1,6 @@
 """Allowlisted dependency inspection and background installation for the current ComfyUI Python."""
 from pathlib import Path
-import importlib.util, importlib.metadata, sys, platform, subprocess, os, json, threading, concurrent.futures, tempfile, urllib.request, zipfile, io, shutil
+import importlib.util, importlib.metadata, sys, platform, subprocess, os, json, threading, concurrent.futures, tempfile, time, urllib.request, zipfile, io, shutil
 PACKAGES={
  "qwen3_tts":{"label":"Qwen3-TTS配音节点与独立环境","node":"Qwen3TTSVoiceDesign","nodes":["Qwen3TTSVoiceDesign","Qwen3TTSVoiceClone"],"repo":"shinrali/ComfyUI-Qwen3-TTS","directory":"ComfyUI-Qwen3-TTS","reason":"声音设计、角色固定声线配音"},
  "exact_audio_lock":{"label":"H3 ExactAudioLock对白锁定节点","node":"MiniMaxH3DialogueAudioLock","nodes":["MiniMaxH3DialogueAudioLock","MiniMaxH3DialogueAudioFinalize"],"repo":"badgids/ComfyUI-H3-ExactAudioLock","directory":"ComfyUI-H3-ExactAudioLock","reason":"正式配音对白时间锁定与音轨恢复"},
@@ -97,6 +97,49 @@ class DependencyManager:
   return self.snapshot()
  def update(self,key,**values):
   with self.lock:self.jobs[key].update(values)
+ def read_archive(self,key,url):
+  self.update(key,phase='connecting',bytes=0,total=0,speed=0,activity=time.time())
+  with self.opener(url,timeout=60) as response:
+   total=int(getattr(response,'headers',{}).get('Content-Length',0) or 0)
+   if total>256*1024**2:raise ValueError('节点包过大')
+   data=bytearray();started=time.monotonic()
+   while True:
+    chunk=response.read(256*1024)
+    if not chunk:break
+    data.extend(chunk)
+    if len(data)>256*1024**2:raise ValueError('节点包过大')
+    self.update(key,phase='downloading',bytes=len(data),total=total,speed=len(data)/max(.01,time.monotonic()-started),activity=time.time())
+   if total and len(data)!=total:raise ValueError('节点包下载不完整，请重试')
+   self.update(key,phase='extracting',activity=time.time())
+   return bytes(data)
+
+ def run_logged(self,key,cmd,**options):
+  env=options.setdefault('env',dict(os.environ));env.update(PYTHONUNBUFFERED='1',PIP_PROGRESS_BAR='on',PIP_NO_COLOR='1')
+  self.update(key,phase='installing',bytes=0,total=0,speed=0,activity=time.time())
+  if self.runner is not subprocess.run:
+   result=self.runner(cmd,capture_output=True,text=True,encoding='utf-8',errors='replace',**options)
+   self.update(key,log=((result.stdout or '')+'\n'+(result.stderr or ''))[-12000:],activity=time.time())
+   return result
+  timeout=options.pop('timeout',1200)
+  process=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace',bufsize=1,**options)
+  output=[]
+  def read():
+   buffer='';last=0
+   while True:
+    char=process.stdout.read(1)
+    if not char:break
+    buffer=(buffer+('\n' if char=='\r' else char))[-12000:]
+    now=time.monotonic()
+    if char in ('\n','\r') or now-last>.25:
+     self.update(key,log=buffer,activity=time.time());last=now
+   output.append(buffer);self.update(key,log=buffer,activity=time.time())
+  reader=threading.Thread(target=read,daemon=True);reader.start()
+  try:code=process.wait(timeout=timeout)
+  except subprocess.TimeoutExpired:
+   process.kill();process.wait();raise ValueError('依赖安装超时，请查看日志后重试')
+  finally:reader.join(timeout=3)
+  return subprocess.CompletedProcess(cmd,code,output[-1] if output else '', '')
+
  def pip(self,key,args,work):
   constraints=Path(work)/'constraints.txt';lines=[]
   for package in ['torch','torchvision','torchaudio','triton','triton-windows','numpy']:
@@ -107,7 +150,7 @@ class DependencyManager:
   env=dict(os.environ);address=self.proxy()
   if address:env.update(HTTP_PROXY=address,HTTPS_PROXY=address)
   self.update(key,log='正在使用ComfyUI Python安装依赖（禁止源码编译，锁定现有Torch等核心版本）…')
-  result=self.runner(cmd,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=1200,env=env,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+  result=self.run_logged(key,cmd,timeout=1200,env=env,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
   self.update(key,log=((result.stdout or '')+'\n'+(result.stderr or ''))[-12000:])
   if result.returncode:raise ValueError('pip安装失败，详见安装日志；未自动升级Torch或编译GPU扩展')
  def install_voice_node(self,key,work):
@@ -116,7 +159,7 @@ class DependencyManager:
    with self.opener('https://api.github.com/repos/'+item['repo']+'/commits/main',timeout=60) as response:revision=json.load(response)['sha']
    if not isinstance(revision,str) or len(revision)!=40 or any(c not in '0123456789abcdef' for c in revision):raise ValueError('节点版本信息无效')
    self.update(key,log='正在下载固定版本节点：'+item['repo']+' @ '+revision)
-   with self.opener('https://codeload.github.com/'+item['repo']+'/zip/'+revision,timeout=60) as response:data=response.read(256*1024**2+1)
+   data=self.read_archive(key,'https://codeload.github.com/'+item['repo']+'/zip/'+revision)
    if len(data)>256*1024**2:raise ValueError('节点包过大')
    stage=Path(work)/item['directory'];extract_repository(data,stage)
    required='install.py' if key=='qwen3_tts' else 'requirements.txt'
@@ -137,7 +180,7 @@ class DependencyManager:
    if address:env.update(HTTP_PROXY=address,HTTPS_PROXY=address,http_proxy=address,https_proxy=address)
    env['QWEN3_TTS_SKIP_MODEL_DOWNLOAD']='1'
    self.update(key,log='正在安装Qwen独立环境，复用ComfyUI Torch；模型请在配音模型卡片下载…')
-   result=self.runner([sys.executable,str(installer)],cwd=str(target),env=env,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=2400,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+   result=self.run_logged(key,[sys.executable,'-u',str(installer)],cwd=str(target),env=env,timeout=2400,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
    self.update(key,log=((result.stdout or '')+'\n'+(result.stderr or ''))[-12000:])
    if result.returncode:raise ValueError('Qwen独立环境安装失败，节点源码已保留，可重试安装；详见日志')
   else:
@@ -157,7 +200,7 @@ class DependencyManager:
      with self.opener('https://api.github.com/repos/kijai/ComfyUI-KJNodes/commits/main',timeout=60) as response:revision=json.load(response)['sha']
      if len(revision)!=40 or any(c not in '0123456789abcdef' for c in revision):raise ValueError('节点版本信息无效')
      self.update(key,log='正在下载固定版本KJNodes：'+revision)
-     with self.opener('https://codeload.github.com/kijai/ComfyUI-KJNodes/zip/'+revision,timeout=60) as response:data=response.read(256*1024**2+1)
+     data=self.read_archive(key,'https://codeload.github.com/kijai/ComfyUI-KJNodes/zip/'+revision)
      if len(data)>256*1024**2:raise ValueError('节点包过大')
      stage=Path(work)/'ComfyUI-KJNodes';extract_repository(data,stage)
      requirements=stage/'requirements.txt'

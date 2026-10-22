@@ -50,7 +50,24 @@ for key in ('qwen3_tts','exact_audio_lock'):
   target=Path(temp)/m.PACKAGES[key]['directory'];assert (target/'__init__.py').is_file();assert manager.jobs[key]['state']=='restart_required',manager.jobs
   assert m.PACKAGES[key]['repo'] in requests[0] and requests[1].endswith('/'+'b'*40)
   if key=='qwen3_tts':
-   cmd,options=runs[0];assert cmd==[sys.executable,str(target/'install.py')];assert options['cwd']==str(target);assert options['env']['QWEN3_TTS_SKIP_MODEL_DOWNLOAD']=='1';assert options['env']['HTTPS_PROXY']=='http://127.0.0.1:7890';assert len(runs)==1
+   cmd,options=runs[0];assert cmd==[sys.executable,'-u',str(target/'install.py')];assert options['cwd']==str(target);assert options['env']['QWEN3_TTS_SKIP_MODEL_DOWNLOAD']=='1';assert options['env']['HTTPS_PROXY']=='http://127.0.0.1:7890';assert len(runs)==1
   else:assert '-r' in runs[0][0] and str(target/'requirements.txt') in runs[0][0] and '--constraint' in runs[0][0]
   manager.jobs[key]={'state':'error'};requests.clear();manager.install(key);assert not requests;assert manager.jobs[key]['state']=='restart_required'
 print('PASS voice node pinned sources, isolated installer in final path, proxy forwarding, no duplicate model downloads, constrained ExactAudioLock deps and retry without overwrite')
+
+import threading,time
+with tempfile.TemporaryDirectory() as temp:
+ manager=m.DependencyManager(temp,lambda:{},env=lambda:env);manager.jobs['qwen3_tts']={'state':'installing'}
+ release=Path(temp)/'continue';script="import pathlib,time;print('downloading package 1',flush=True);p=pathlib.Path("+repr(str(release))+");"+'\nwhile not p.exists():time.sleep(.01)\nprint("install complete",flush=True)'
+ result=[];worker=threading.Thread(target=lambda:result.append(manager.run_logged('qwen3_tts',[sys.executable,'-u','-c',script],timeout=10)));worker.start()
+ for _ in range(300):
+  if 'downloading package 1' in manager.jobs['qwen3_tts'].get('log',''):break
+  time.sleep(.01)
+ assert worker.is_alive() and 'downloading package 1' in manager.jobs['qwen3_tts']['log']
+ release.write_text('go');worker.join(5);assert result[0].returncode==0;assert 'install complete' in manager.jobs['qwen3_tts']['log'];manager.pool.shutdown()
+ class Download(io.BytesIO):
+  headers={'Content-Length':'600000'}
+ manager=m.DependencyManager(temp,lambda:{},env=lambda:env,opener=lambda *a,**kw:Download(b'x'*600000));manager.jobs['qwen3_tts']={}
+ assert len(manager.read_archive('qwen3_tts','https://test'))==600000
+ job=manager.jobs['qwen3_tts'];assert job['bytes']==job['total']==600000 and job['speed']>0 and job['phase']=='extracting';manager.pool.shutdown()
+print('PASS real child process log visible before completion, final output, archive byte totals and download speed')

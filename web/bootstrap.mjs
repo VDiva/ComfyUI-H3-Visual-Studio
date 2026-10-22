@@ -1,6 +1,6 @@
-import {readWorkspace} from './project.mjs?v=0.15.30';
-import {pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.30';
-import {workflowTemplate} from './workflow-template.mjs?v=0.15.30';
+import {readWorkspace} from './project.mjs?v=0.15.31';
+import {pluginUpdateBlocked} from './plugin-update.mjs?v=0.15.31';
+import {workflowTemplate} from './workflow-template.mjs?v=0.15.31';
 export const BACKUP_KEY='h3-visual-studio.before-auto-create.v1';
 const kind=n=>n.comfyClass||n.type;
 export function isStudioWorkflow(graph){
