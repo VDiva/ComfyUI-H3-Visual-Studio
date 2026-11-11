@@ -38,3 +38,15 @@ assert.throws(()=>ctx.ensureSharedLibrary(broken),/素材缺失/);
 assert.equal(broken.timeline.segments[0].refs[0].imageFile,'keep.png');
 assert.equal(broken.timeline.global.assetLibrary,undefined);
 console.log('Shared library migration passed: overrides, common prompts, idempotency, no mutation on failure');
+
+// Workflow closure during upload must not apply to a destroyed editor.
+const closing={root:{querySelector:()=>null},timeline:structuredClone(editor.timeline),applyImportedTimeline(){throw Error('must not apply');}};
+const oldFetch=ctx.api.fetchApi;
+let active=0,peak=0;
+ctx.api.fetchApi=async()=>{ active++; peak=Math.max(peak,active); await new Promise(r=>setTimeout(r,2)); active--; closing.root=null; return {ok:true,json:async()=>({name:'uploaded.png'})}; };
+files=project();
+await assert.rejects(()=>ctx.importStandardProject(closing),/导入已停止/);
+assert.ok(peak>1 && peak<=3);
+assert.equal(active,0);
+ctx.api.fetchApi=oldFetch;
+console.log('Async lifecycle test passed: bounded concurrent uploads, closure handled before apply');

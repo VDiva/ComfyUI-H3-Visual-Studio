@@ -3973,6 +3973,7 @@ class MiniMaxH3DirectorEditor {
     }
 
     destroy() {
+        this._destroyed = true;
         clearTimeout(this._syncTimer);
         clearTimeout(this._settleRenderTimer);
         clearTimeout(this._settleRenderLateTimer);

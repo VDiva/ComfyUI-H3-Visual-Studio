@@ -1,6 +1,6 @@
 /** Multi prompt-group UI for t2i / i2i / r2i / t2v / i2v / r2v (prompt batch mode). */
 
-import { ensureSharedLibrary } from "./minimax_project_import.js";
+import { ensureSharedLibrary, renderSharedLibraryPanel } from "./minimax_project_import.js";
 import { api } from "../../scripts/api.js";
 import { createLoraSection } from "./minimax_segment_loras.js";
 import {
@@ -2536,6 +2536,7 @@ export function renderImageBatchGroups(editor) {
         try { ensureSharedLibrary(editor); }
         catch (error) { list.textContent = "公共素材迁移失败：" + (error.message || error); return; }
     }
+    renderSharedLibraryPanel(editor, key === "r2v");
     const variant = imageBatchVariant(key);
     const isVideo = isVideoBatchTask(key);
     const runningIdx = editor._runHighlightSeg;

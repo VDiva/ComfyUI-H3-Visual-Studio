@@ -31,21 +31,28 @@ async function upload(file) {
     const data=await response.json();
     return [data.subfolder,data.name].filter(Boolean).join("/");
 }
-function choose(directory=false) {
+function choose(directory=false, kind=null) {
     return new Promise(resolve=>{
         const input=document.createElement("input"); input.type="file"; input.multiple=true;
         if(directory) input.webkitdirectory=true;
-        else input.accept="image/png,image/jpeg,image/webp,audio/*,video/*";
+        else input.accept=({images:"image/png,image/jpeg,image/webp",audios:"audio/*",videos:"video/*"})[kind] || "image/png,image/jpeg,image/webp,audio/*,video/*";
         input.onchange=()=>resolve(Array.from(input.files||[])); input.oncancel=()=>resolve([]); input.click();
     });
 }
 export async function importStandardProject(editor) {
+    const importRoot=editor.root;
+    const assertActive=()=>{
+        if(editor._destroyed || (importRoot && editor.root!==importRoot)) {
+            throw Error("导入已停止：原导演台已关闭或工作流已切换。已上传文件可能保留，请回到参考生视频重新导入。");
+        }
+    };
     const files=await choose(true); if(!files.length)return;
     const entries=new Map();
     for(const file of files) {
         const path=relative(file.webkitRelativePath.split("/").slice(1).join("/"));
         if(entries.has(path))throw Error(`重复路径：${path}`); entries.set(path,file);
     }
+    assertActive();
     const library={images:[],audios:[],videos:[]};
     for(const [kind,[folder,field]] of Object.entries(specs)) {
         const index=entries.get(`${folder}/${folder}索引.md`);
@@ -88,10 +95,28 @@ export async function importStandardProject(editor) {
     }
     if(!segments.length)throw Error("目录内没有有效章节提示词索引.md");
     if(!window.confirm(`导入 ${segments.length} 段，替换当前导演台时间轴？模型、采样及二采设置保留。`))return;
-    // Validate every reference before uploading or changing the timeline.
-    for(const [kind,items] of Object.entries(library)) for(const item of items) {
-        item[specs[kind][1]]=await upload(entries.get(item.sourcePath));
-    }
+    assertActive();
+    // Preflight above finishes before uploads. Bounded parallelism avoids serial RTTs.
+    const jobs=Object.entries(library).flatMap(([kind,items])=>items.map(item=>({kind,item})));
+    const button=editor.root?.querySelector('[data-a="project-import"]');
+    let cursor=0,done=0,failure=null;
+    const totalBytes=jobs.reduce((sum,{item})=>sum+(entries.get(item.sourcePath).size||0),0);
+    const progress=()=>{if(button)button.textContent=`上传素材 ${done}/${jobs.length}（共 ${(totalBytes/1048576).toFixed(1)} MB）`;};
+    progress();
+    const worker=async()=>{
+        while(!failure && cursor<jobs.length){
+            const {kind,item}=jobs[cursor++];
+            try {
+                assertActive();
+                item[specs[kind][1]]=await upload(entries.get(item.sourcePath));
+                assertActive();
+                done++;progress();
+            } catch(error){failure ||= error;}
+        }
+    };
+    await Promise.all(Array.from({length:Math.min(3,jobs.length)},worker));
+    if(failure)throw failure;
+    assertActive();
     const timeline=structuredClone(editor.timeline);
     const fps=Number(timeline.frameRate)||24;
     const hasMedia=Object.values(library).some(items=>items.length);
@@ -144,6 +169,77 @@ export function ensureSharedLibrary(editor) {
 
     editor.timeline.projectLibrary=true;
     return library;
+}
+
+
+/** Visible shared library, independent of the common-prompt enable switch. */
+export function renderSharedLibraryPanel(editor, enabled = true) {
+    const root = editor.root;
+    if (!root) return;
+    let panel = root.querySelector('[data-r="shared-library-panel"]');
+    if (!enabled) { panel?.remove(); return; }
+    const library = editor.timeline.global?.assetLibrary;
+    if (!library) return;
+    if (!panel) {
+        panel = document.createElement("section");
+        panel.dataset.r = "shared-library-panel";
+        panel.className = "bd-panel";
+        const anchor = root.querySelector('[data-r="batch-panel"]');
+        if (!anchor) return;
+        anchor.before(panel);
+    }
+    panel.replaceChildren();
+    const heading = document.createElement("b");
+    heading.textContent = "公共参考素材（所有分段共享）";
+    panel.appendChild(heading);
+    for (const [kind, label] of [["images", "图片"], ["audios", "音频"], ["videos", "视频"]]) {
+        const section = document.createElement("div");
+        section.style.cssText = "margin-top:10px";
+        const add = document.createElement("button");
+        add.className = "bd-btn";
+        add.textContent = "上传公共" + label + "（" + library[kind].length + "）";
+        add.onclick = async event => {
+            event.preventDefault(); event.stopPropagation(); add.disabled = true;
+            try {
+                const files = await choose(false, kind);
+                for (const file of files) {
+                    const path = await upload(file);
+                    const index = Math.max(-1, ...library[kind].map(item => item.index)) + 1;
+                    library[kind].push({index, [specs[kind][1]]: path, sourcePath: file.name});
+                    editor.commit();
+                }
+            } catch (error) { alert(String(error.message || error)); }
+            finally { editor.renderImageBatchGroups?.(); }
+        };
+        section.appendChild(add);
+        const grid = document.createElement("div");
+        grid.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;max-height:280px;overflow:auto";
+        for (const item of library[kind]) {
+            const card = document.createElement("div");
+            card.style.cssText = "width:150px;padding:6px;border:1px solid #46515f;border-radius:6px;overflow-wrap:anywhere";
+            const title = document.createElement("div");
+            title.textContent = "@" + label + (item.index + 1);
+            card.appendChild(title);
+            const path = item[specs[kind][1]];
+            if (path) {
+                const media = document.createElement(kind === "images" ? "img" : kind === "audios" ? "audio" : "video");
+                const split = path.lastIndexOf("/");
+                const query = new URLSearchParams({filename:path.slice(split+1), subfolder:split < 0 ? "" : path.slice(0,split), type:item.type || "input"});
+                media.src = api.apiURL("/view?" + query);
+                media.style.cssText = "width:100%;max-height:120px;object-fit:contain";
+                if (kind !== "images") { media.controls = true; media.preload = "metadata"; }
+                else media.loading = "lazy";
+                card.appendChild(media);
+            }
+            const name = document.createElement("div");
+            name.textContent = item.sourcePath || path;
+            name.style.fontSize = "11px";
+            card.appendChild(name);
+            grid.appendChild(card);
+        }
+        section.appendChild(grid);
+        panel.appendChild(section);
+    }
 }
 
 export function bindProjectActions(editor) {
