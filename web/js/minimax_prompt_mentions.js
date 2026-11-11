@@ -1,4 +1,4 @@
-﻿/** Director prompt @-mentions + official-tag token chips (<Picture N> / <Video K> / <Audio J>).
+/** Director prompt @-mentions + official-tag token chips (<Picture N> / <Video K> / <Audio J>).
  *
  * Canonical storage is always the official MiniMax tag string (textarea.value).
  * The visible surface is a contenteditable that renders atomic bd-token chips.
@@ -1263,16 +1263,16 @@ export function refreshPromptTokenEditors(root = document) {
 export function mountPromptImageMentions(editor) {
     if (!editor) return;
     wirePromptImageMentions(editor, editor.globalPrompt, () => ({
-        refs: editor.timeline?.global?.refs || [],
-        audios: editor.timeline?.global?.refAudios || [],
-        videos: promptVideosFor(editor, null, editor.timeline?.global?.refVideos || []),
+        refs: editor.timeline?.global?.assetLibrary?.images || editor.timeline?.global?.refs || [],
+        audios: editor.timeline?.global?.assetLibrary?.audios || editor.timeline?.global?.refAudios || [],
+        videos: editor.timeline?.global?.assetLibrary?.videos || promptVideosFor(editor, null, editor.timeline?.global?.refVideos || []),
     }));
     wirePromptImageMentions(editor, editor.segPrompt, () => {
         const seg = editor.timeline?.segments?.[editor.selectedIndex];
         return {
-            refs: seg?.refs || [],
-            audios: seg?.refAudios || [],
-            videos: promptVideosFor(editor, seg, seg?.refVideos || []),
+            refs: editor.timeline?.global?.assetLibrary?.images || seg?.refs || [],
+            audios: editor.timeline?.global?.assetLibrary?.audios || seg?.refAudios || [],
+            videos: editor.timeline?.global?.assetLibrary?.videos || promptVideosFor(editor, seg, seg?.refVideos || []),
         };
     });
 }

@@ -791,6 +791,11 @@ def build_director_plan(
         except json.JSONDecodeError as exc:
             raise ValueError(f"Invalid timeline_data JSON: {exc}") from exc
 
+    from .shared_assets import resolve_shared_assets
+    library_mode = (timeline.get("global") or {}).get("assetLibrary") is not None or timeline.get("_sharedAssetsResolved", False)
+    timeline = resolve_shared_assets(timeline)
+    if library_mode:
+        global_prompt = ""
     global_block = timeline.get("global") or {}
     edit_mode = timeline.get("editMode") or timeline.get("edit_mode") or "global"
     if edit_mode not in ("global", "segment"):

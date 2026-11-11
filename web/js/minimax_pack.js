@@ -1,5 +1,6 @@
 /** Director pack (script + assets) import/export UI. */
 
+import { bindProjectActions } from "./minimax_project_import.js";
 import { api } from "../../scripts/api.js";
 import { t } from "./minimax_i18n.js";
 import { safeUploadFilename } from "./minimax_gen_timeline.js";
@@ -330,6 +331,7 @@ export async function importDirectorPack(editor) {
 }
 
 export function bindPackActions(editor) {
+    bindProjectActions(editor);
     const bind = (sel, fn) => {
         const el = editor.root?.querySelector(sel);
         if (!el) return;

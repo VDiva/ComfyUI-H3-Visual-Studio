@@ -388,6 +388,11 @@ def build_gen_director_plan(
         segment_refs_for_context,
     )
 
+    from .shared_assets import resolve_shared_assets
+    library_mode = (timeline.get("global") or {}).get("assetLibrary") is not None or timeline.get("_sharedAssetsResolved", False)
+    timeline = resolve_shared_assets(timeline)
+    if library_mode:
+        global_prompt = ""
     global_block = timeline.get("global") or {}
     edit_mode = timeline.get("editMode") or timeline.get("edit_mode") or "global"
     if is_prompt_batch_timeline(timeline, resolve_task_key(global_block.get("taskType") or global_task_type or "")):
@@ -676,6 +681,11 @@ def build_gen_director_plan(
             seg_source = None
         else:
             seg_source = source_clips[idx].clone() if idx < len(source_clips) else None
+
+        if library_mode and seg_task_key == "r2v":
+            for field, loaded in (("refs", seg_refs), ("refAudios", seg_ref_audios), ("refVideos", seg_ref_videos)):
+                if len(loaded) != len(seg_data.get(field) or []):
+                    raise ValueError(f"分段 {idx + 1} 公共素材 {field} 加载失败；请检查文件是否存在及格式是否支持")
 
         segments.append(
             SegmentPlan(

@@ -11292,6 +11292,10 @@ class MiniMaxH3DirectorEditor {
     renderRefSlots(refs, box, isGlobal) {
         if (!box) return;
         box.innerHTML = "";
+        if (this.timeline.global?.assetLibrary) {
+            box.textContent = "项目公共素材库已启用：请通过工具栏公共素材库管理，提示词按需引用。";
+            return;
+        }
         const target = isGlobal
             ? this.timeline.global
             : this.timeline.segments[this.selectedIndex];

@@ -1875,13 +1875,20 @@ function appendR2vMediaSections(card, seg, index, editor) {
     const audSlots = Math.max(0, MAX_REFERENCE_AUDIOS - audOffset);
     const vidSlots = Math.max(0, MAX_REFERENCE_VIDEOS - vidOffset);
     const counts = countFilledRefs(seg, { picOffset, audOffset, vidOffset });
-    const commonImgs = listCommonImageRefs(editor);
+    const projectLibrary = editor.timeline?.global?.assetLibrary;
+    const commonImgs = projectLibrary ? [] : listCommonImageRefs(editor);
     const commonVids = listCommonVideoRefs(editor);
     const body = document.createElement("div");
     body.className = "bd-batch-r2v-body";
 
     const assets = document.createElement("div");
     assets.className = "bd-batch-r2v-assets";
+    if (projectLibrary) {
+        assets.style.display = "none";
+        const notice = document.createElement("p");
+        notice.textContent = "公共素材库：直接写 @图片N / @音频N / @视频N，执行时仅加载引用素材（每段最多9图/3音频/3视频）。管理素材请点击工具栏公共素材库。";
+        card.appendChild(notice);
+    }
 
     // Inherited common pictures (read-only preview) so groups still "see" shared cast.
     if (commonImgs.length) {
@@ -2917,6 +2924,7 @@ function appendBatchCard(list, editor, seg, index, ctx) {
                 const live = (editor.timeline.segments || []).find((s) => s?.id && s.id === segId)
                     || editor.timeline.segments?.[segIndex]
                     || seg;
+                if (g.assetLibrary) return {refs:g.assetLibrary.images || [], audios:g.assetLibrary.audios || [], videos:g.assetLibrary.videos || []};
                 // Absolute indices: common 图片1…N + group 图片N+1… (no renumber clash).
                 return {
                     refs: on ? mergeMediaByIndex(g.refs || [], live.refs || []) : (live.refs || []),

@@ -11,6 +11,10 @@
 
 ![MiniMaxH3Director 工作流截图](docs/screenshot.png)
 
+## 标准项目目录导入与公共素材库
+
+工具栏新增“导入项目目录”和“公共素材库”。按 [标准目录与 AI 交付规范](标准目录与AI交付规范.md) 整理章节索引、提示词与共享素材；一次导入生成导演台素材组。公共库数量不限，运行时按每段提示词自动选择引用，仍遵守每段最多 9 图 / 3 音频 / 3 视频。详见 [使用说明](docs/project-directory-import.md)。
+
 ## 功能介绍
 
 **MiniMaxH3Director** 是面向长视频、多段生成的 MiniMax H3 导演台节点，把分段计划、条件编码、采样解码和导出整合在一个节点里。底层走官方 `MiniMaxH3ImageToVideo` / `MiniMaxH3ReferenceToVideo` + `MiniMaxH3SigmaShift` + `KSampler` + AV 分离解码链路，原生输出立体声音频。
