@@ -23,3 +23,18 @@ files=project('@图片21');await assert.rejects(()=>ctx.importStandardProject(ed
 files=project('@图片1','11');await assert.rejects(()=>ctx.importStandardProject(editor),/时长/);assert.equal(uploads,before);
 files=project(Array.from({length:10},(_,i)=>`@图片${i+1}`).join(' '));await assert.rejects(()=>ctx.importStandardProject(editor),/上限/);assert.equal(uploads,before);
 console.log('Directory import tests passed: real frame helper, 20 images, duration, unchanged output, preflight failures before upload');
+
+// Shared-only UI must preserve old group overrides and rewrite local slots.
+const legacy={timeline:{global:{taskType:'r2v',commonEnabled:true,prompt:'common <Picture 1>',refs:[{index:0,imageFile:'common.png'}]},segments:[{prompt:'first <Picture 1>',refs:[]},{prompt:'second <Picture 1>',refs:[{index:0,imageFile:'override.png'}]}]}};
+const shared=ctx.ensureSharedLibrary(legacy);
+assert.equal(shared.images.length,2);
+assert.equal(legacy.timeline.segments[0].prompt,'common <Picture 1>\n\nfirst <Picture 1>');
+assert.equal(legacy.timeline.segments[1].prompt,'common <Picture 2>\n\nsecond <Picture 2>');
+assert.equal(legacy.timeline.global.refs.length,0);
+assert.equal(legacy.timeline.segments[1].refs.length,0);
+assert.equal(ctx.ensureSharedLibrary(legacy),shared);
+const broken={timeline:{global:{taskType:'r2v'},segments:[{prompt:'<Picture 2>',refs:[{index:0,imageFile:'keep.png'}]}]}};
+assert.throws(()=>ctx.ensureSharedLibrary(broken),/素材缺失/);
+assert.equal(broken.timeline.segments[0].refs[0].imageFile,'keep.png');
+assert.equal(broken.timeline.global.assetLibrary,undefined);
+console.log('Shared library migration passed: overrides, common prompts, idempotency, no mutation on failure');

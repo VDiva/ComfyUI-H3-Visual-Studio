@@ -1,5 +1,6 @@
 /** Multi prompt-group UI for t2i / i2i / r2i / t2v / i2v / r2v (prompt batch mode). */
 
+import { ensureSharedLibrary } from "./minimax_project_import.js";
 import { api } from "../../scripts/api.js";
 import { createLoraSection } from "./minimax_segment_loras.js";
 import {
@@ -2530,6 +2531,11 @@ export function renderImageBatchGroups(editor) {
     flushBatchDurationInputs(editor);
     stopAllPlayers(list);
     const key = resolveTaskKey(editor.getTaskKey?.() || editor.taskTypeWidget?.value);
+    editor.root?.classList.toggle("bd-shared-r2v", key === "r2v");
+    if (key === "r2v") {
+        try { ensureSharedLibrary(editor); }
+        catch (error) { list.textContent = "公共素材迁移失败：" + (error.message || error); return; }
+    }
     const variant = imageBatchVariant(key);
     const isVideo = isVideoBatchTask(key);
     const runningIdx = editor._runHighlightSeg;
@@ -2551,7 +2557,7 @@ export function renderImageBatchGroups(editor) {
             || (global.refAudios || []).some((r) => r?.audioFile || r?.fileName)
             || (global.refVideos || []).some((r) => _refHasVideo(r))
         );
-        const hasAnyMedia = hasCommonMedia || (editor.timeline.segments || []).some((s) => (
+        const hasAnyMedia = (global.assetLibrary && Object.values(global.assetLibrary).some(items => items.length > 0)) || hasCommonMedia || (editor.timeline.segments || []).some((s) => (
             (s.refs || []).some((r) => r?.imageFile)
             || (s.refAudios || []).some((r) => r?.audioFile || r?.fileName)
             || (s.refVideos || []).some((r) => (

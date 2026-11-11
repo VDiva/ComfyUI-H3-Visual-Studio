@@ -1130,6 +1130,8 @@ const STYLES = `
 .bd-output .bd-out-source-wrap label span,.bd-output .bd-out-preface-wrap label span{line-height:1.2;display:inline-block}
 .bd-split{display:block;width:100%;box-sizing:border-box;min-width:0}
 .bd-video-group-bar{margin:0 0 8px}
+.bd-shared-r2v [data-r="global-refs-col"],.bd-shared-r2v .bd-batch-r2v-assets{display:none!important}
+.bd-shared-r2v .bd-batch-r2v-body{grid-template-columns:1fr!important}
 .bd-r2v-common-hint{margin:0 0 8px;font-size:11px;line-height:1.4;color:#9ab;opacity:.95}
 .bd-panel.bd-r2v-common-panel{border:1px solid #3a4a5a;background:linear-gradient(180deg,#1a222c 0%,#151a20 100%)}
 .bd-r2v-common-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px}

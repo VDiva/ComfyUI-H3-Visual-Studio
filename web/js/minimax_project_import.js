@@ -111,18 +111,10 @@ export async function importStandardProject(editor) {
     alert(`已导入 ${segments.length} 段。公共库 ${library.images.length} 图 / ${library.audios.length} 音频 / ${library.videos.length} 视频。请核对所接模型：${task}。`);
 }
 
-export function bindProjectActions(editor) {
-    const host=editor.root?.querySelector('[data-a="pack-import"]')?.parentElement;
-    if(!host || host.querySelector('[data-a="project-import"]'))return;
-    for(const [action,label,handler] of [
-        ["project-import","导入项目目录",()=>importStandardProject(editor)],
-        ["project-library","公共素材库",async()=>{
-            let library=editor.timeline.global?.assetLibrary;
-            if(!library){
-                if(!window.confirm("将当前素材组迁移到公共素材库？原分组引用会映射为项目编号，未在提示词引用的素材不传给模型。"))return;
+export function ensureSharedLibrary(editor) {
+    if (editor.timeline.global?.assetLibrary) return editor.timeline.global.assetLibrary;
                 const g=editor.timeline.global || {};
-                if(!String(g.taskType || editor.taskTypeWidget?.value || "").startsWith("r2v"))throw Error("旧素材迁移目前用于 r2v 素材组；首尾帧和源视频请保留专用输入。");
-                library={images:[],audios:[],videos:[]};
+                const library={images:[],audios:[],videos:[]};
                 const replacements=[];
                 for(const segment of editor.timeline.segments || []) {
                     const maps={};
@@ -149,7 +141,21 @@ export function bindProjectActions(editor) {
                 }
                 for(const [segment,prompt]of replacements){segment.prompt=prompt;segment.refs=[];segment.refAudios=[];segment.refVideos=[];}
                 editor.timeline.global={...g,assetLibrary:library,refs:[],refAudios:[],refVideos:[],prompt:"",commonEnabled:false};
-                editor.timeline.projectLibrary=true;editor.applyImportedTimeline(structuredClone(editor.timeline),{});
+
+    editor.timeline.projectLibrary=true;
+    return library;
+}
+
+export function bindProjectActions(editor) {
+    const host=editor.root?.querySelector('[data-a="pack-import"]')?.parentElement;
+    if(!host || host.querySelector('[data-a="project-import"]'))return;
+    for(const [action,label,handler] of [
+        ["project-import","导入项目目录",()=>importStandardProject(editor)],
+        ["project-library","公共素材库",async()=>{
+            let library=editor.timeline.global?.assetLibrary;
+            if(!library){
+                library=ensureSharedLibrary(editor);
+                editor.applyImportedTimeline(structuredClone(editor.timeline),{});
             }
             const listing=Object.entries(library).flatMap(([kind,items])=>items.map(r=>`${{images:"@图片",audios:"@音频",videos:"@视频"}[kind]}${r.index+1} ${r.sourcePath||r.imageFile||r.audioFile||r.videoFile}`));
             if(!window.confirm(`${listing.join("\n")}\n\n库内数量不限；单段最多9图/3音频/3视频。点击确定追加素材，取消关闭。`))return;
