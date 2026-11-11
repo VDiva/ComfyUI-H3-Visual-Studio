@@ -1,6 +1,11 @@
-# ComfyUI MiniMax H3 Director
+# ComfyUI H3 Visual Studio
 
-基于 **ComfyUI 官方 MiniMax-H3** 的多段音视频导演台插件。仓库地址：[AIMixer/ComfyUI_MiniMaxH3_Director](https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director)
+基于 [AIMixer/ComfyUI_MiniMaxH3_Director](https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director) 二次开发的 ComfyUI MiniMax H3 多段音视频工作流插件，沿用原项目 Apache-2.0 协议。
+
+**本仓库：** [VDiva/ComfyUI-H3-Visual-Studio](https://github.com/VDiva/ComfyUI-H3-Visual-Studio)
+**上游项目：** [AIMixer/ComfyUI_MiniMaxH3_Director](https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director)
+
+本分支主要补充视频合并、分段导出与缓存读取的内存优化。现有节点名称保留 `MiniMax H3 Director`，便于继续使用原工作流。修改范围、测试状态及性能限制见 [性能优化说明](docs/performance-optimizations.md)；目前尚无量化提速基准，完整工作流仍需在 ComfyUI 环境验证。
 
 **English** → [README_EN.md](README_EN.md)
 
@@ -33,7 +38,7 @@
 
 ### 输入 / 输出
 
-**输入：** `model` → `video_vae` → `audio_vae` → `clip`  
+**输入：** `model` → `video_vae` → `audio_vae` → `clip`
 **可选：** `i2v_groups`（Image to Video 多组）/ `r2v_groups`（Reference to Video 多组）/ `semantic_bridge`（`MiniMax H3 Director Semantic Bridge`）/ `selflift`（`MiniMax H3 Director SelfLift`）/ `refine`（`MiniMax H3 Director Refine`）
 
 > **缓存文件夹名（`cache_name`，面板「性能」组最下方）**：分段缓存的目录名。
@@ -43,7 +48,7 @@
 
 **输出：** `images` → `audio` → `fps` → `frame_count` → `source_images` → `report` → `images_pre_refine`
 
-> CLIP Loader 的 **type 必须选 `minimax`**（Qwen3-VL）。  
+> CLIP Loader 的 **type 必须选 `minimax`**（Qwen3-VL）。
 > `t2v` / `i2v` / `fl2v` 用 **fl2va** UNET；`r2v` / `v2v` / `rv2v` 用 **ref2va** UNET。
 
 `输出原片到 source_images` 只填充独立的 `source_images` 输出，不会改变主 `images`。请将 `source_images` 另接预览或视频合成节点查看；解码失败时运行报告会明确说明，并输出灰色占位而不会冒充生成画面。
@@ -80,7 +85,7 @@ timeline.json
 
 请将 **ComfyUI** 升级到 **v0.30.0** 及以上（含官方 MiniMax H3 节点：[PR #15224](https://github.com/comfyanonymous/ComfyUI/pull/15224)、[PR #15228](https://github.com/comfyanonymous/ComfyUI/pull/15228)）。
 
-可选：`scenedetect`（智能分割）、`opencv-python-headless`（源视频解码）、`imageio-ffmpeg`（原声抽取）——见 `requirements.txt`。  
+可选：`scenedetect`（智能分割）、`opencv-python-headless`（源视频解码）、`imageio-ffmpeg`（原声抽取）——见 `requirements.txt`。
 Refine 的 `nvidia_rtx_vsr` 另需 NVIDIA GPU，可 `pip install nvidia-vfx --extra-index-url https://pypi.nvidia.com`（不是硬依赖）。
 
 ## 安装
@@ -89,9 +94,9 @@ Refine 的 `nvidia_rtx_vsr` 另需 NVIDIA GPU，可 `pip install nvidia-vfx --ex
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director.git
+git clone https://github.com/VDiva/ComfyUI-H3-Visual-Studio.git
 
-pip install -r ComfyUI_MiniMaxH3_Director/requirements.txt
+pip install -r ComfyUI-H3-Visual-Studio/requirements.txt
 ```
 
 重启 ComfyUI。
@@ -100,7 +105,7 @@ pip install -r ComfyUI_MiniMaxH3_Director/requirements.txt
 
 1. 打开 **ComfyUI Manager**
 2. 选择 **Install via Git URL**
-3. 填入 `https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director.git` 并安装
+3. 填入 `https://github.com/VDiva/ComfyUI-H3-Visual-Studio.git` 并安装
 4. 重启 ComfyUI
 
 ## 模型与工作流下载
@@ -213,12 +218,12 @@ pip install -r ComfyUI_MiniMaxH3_Director/requirements.txt
 | 模型广场 | [comfyit.cn/resources/models](https://comfyit.cn/resources/models) |
 | 工作流广场 | [comfyit.cn/workflows](https://comfyit.cn/workflows) |
 
-## 作者与交流
+## 上游作者与交流
 
 | | |
 |---|---|
-| **维护者** | [AI搅拌手 / AIMixer](https://github.com/AIMixer) |
-| **本仓库** | [github.com/AIMixer/ComfyUI_MiniMaxH3_Director](https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director) |
+| **上游维护者** | [AI搅拌手 / AIMixer](https://github.com/AIMixer) |
+| **上游仓库** | [github.com/AIMixer/ComfyUI_MiniMaxH3_Director](https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director) |
 | **姊妹插件** | [ComfyUI_Bernini_Director](https://github.com/AIMixer/ComfyUI_Bernini_Director) |
 | **作者 QQ** | **3697688140** |
 | **B 站** | [space.bilibili.com/1997403556](https://space.bilibili.com/1997403556) |
