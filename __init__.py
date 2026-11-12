@@ -57,6 +57,22 @@ import logging
 _log = logging.getLogger("ComfyUI-MiniMaxH3-Director")
 
 try:
+    from pathlib import Path as _Path
+    from .director.bundled_aicg3d import load_bundled_nodes as _load_bundled_nodes
+
+    _bundled_mapping, _bundled_display = _load_bundled_nodes(
+        _Path(__file__).resolve().parent / "external_plugins" / "comfyui-AICG3D"
+    )
+    _conflicts = set(NODE_CLASS_MAPPINGS).intersection(_bundled_mapping)
+    if _conflicts:
+        raise RuntimeError(f"Bundled node IDs conflict with Director: {_conflicts}")
+    NODE_CLASS_MAPPINGS.update(_bundled_mapping)
+    NODE_DISPLAY_NAME_MAPPINGS.update(_bundled_display)
+    _log.info("Bundled AICG3D: registered %d nodes, including final combine and packed upscale", len(_bundled_mapping))
+except Exception:
+    _log.exception("Bundled AICG3D failed to load; Director nodes remain available")
+
+try:
     from .director.http_routes import register_routes as _register_director_routes
 
     if not _register_director_routes():

@@ -1,0 +1,120 @@
+name: Publish to Comfy Registry
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: "1"
+
+concurrency:
+  group: comfy-registry-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python for package verification
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Preserve non-ASCII package paths
+        run: git config --global core.quotepath false
+
+      - name: Check Registry token
+        id: registry-token
+        env:
+          REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
+        run: |
+          if [ -n "$REGISTRY_ACCESS_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Comfy Registry not configured::Add REGISTRY_ACCESS_TOKEN in repository Actions secrets."
+          fi
+
+      - name: Check whether this package version is already uploaded
+        if: steps.registry-token.outputs.configured == 'true'
+        id: registry-package
+        shell: bash
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          URL="https://cdn.comfy.org/aicg3d/aicg3d-h3-suite/$VERSION/node.zip"
+          if curl --fail --silent --show-error --location --head "$URL" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Registry package already uploaded::Skipping duplicate version upload; verification will continue."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish custom node
+        if: steps.registry-token.outputs.configured == 'true' && steps.registry-package.outputs.exists != 'true'
+        uses: Comfy-Org/publish-node-action@main
+        with:
+          personal_access_token: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
+
+      - name: Verify Registry package contents
+        if: steps.registry-token.outputs.configured == 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.registry-package.outputs.version }}
+        run: |
+          python - "${VERSION}" <<'PY'
+          import io
+          import sys
+          import time
+          import urllib.request
+          import zipfile
+
+          version = sys.argv[1]
+          url = f"https://cdn.comfy.org/aicg3d/aicg3d-h3-suite/{version}/node.zip"
+          last_error = None
+          for _ in range(18):
+              try:
+                  with urllib.request.urlopen(url, timeout=60) as response:
+                      payload = response.read()
+                  break
+              except Exception as exc:
+                  last_error = exc
+                  time.sleep(5)
+          else:
+              raise RuntimeError(f"Registry package was not available: {last_error}")
+
+          with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+              names = set(archive.namelist())
+          required = {
+              "web/minimax_h3_easy_ui_v4.js",
+              "web/aicg3d_prompt_split.js",
+              "aicg3d_h3easy/nodes.py",
+              "pyproject.toml",
+              "LICENSE",
+          }
+          missing = sorted(required - names)
+          workflows = sorted(name for name in names if name.startswith("workflows/") and name.endswith(".json"))
+          last_error = None
+          for attempt in range(1, 37):
+              if not missing and len(workflows) >= 9:
+                  print(f"Verified {len(names)} files and {len(workflows)} workflows")
+                  break
+              last_error = RuntimeError(
+                  f"incomplete package: missing={missing}, workflows={len(workflows)}"
+              )
+              print(f"Verification attempt {attempt}/36 failed: {last_error}")
+              if attempt >= 36:
+                  raise RuntimeError(f"Registry package verification failed: {last_error}")
+              time.sleep(10)
+              with urllib.request.urlopen(url, timeout=60) as response:
+                  payload = response.read()
+              with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+                  names = set(archive.namelist())
+              missing = sorted(required - names)
+              workflows = sorted(name for name in names if name.startswith("workflows/") and name.endswith(".json"))
+          PY
