@@ -628,12 +628,17 @@ function installStyles() {
 }
 
 function resizeVoiceNode(node) {
-    if (!node?.size || Number(node.size.length) < 2) return false;
+    if (!node?.size || Number(node.size.length) < 2 || node.__h3VoiceResizing) return false;
     const width = Math.max(MIN_NODE_WIDTH, Number(node.size[0]) || 0);
     const height = Math.max(MIN_NODE_HEIGHT, Number(node.size[1]) || 0);
     if (Number(node.size[0]) === width && Number(node.size[1]) === height) return false;
-    node.setSize?.([width, height]);
-    return true;
+    node.__h3VoiceResizing = true;
+    try {
+        node.setSize?.([width, height]);
+        return true;
+    } finally {
+        node.__h3VoiceResizing = false;
+    }
 }
 
 function syncVoiceDomLayout(node) {

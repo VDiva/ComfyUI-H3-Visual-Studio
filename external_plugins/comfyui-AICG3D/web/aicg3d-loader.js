@@ -659,19 +659,30 @@ function buildPanel(node) {
 }
 
 function resize(node) {
-    const widget = node.__a3LoaderWidget;
-    const panel = node.__a3LoaderPanel;
-    if (!widget || !panel) return;
-    panel.style.height = "auto";
-    const contentHeight = Math.max(1, Math.ceil(panel.scrollHeight || 0));
-    node.__a3LoaderMinHeight = contentHeight + 8;
-    widget.computeLayoutSize = () => ({ minHeight: node.__a3LoaderMinHeight, maxHeight: undefined, minWidth: 0 });
-    widget.options ||= {};
-    widget.options.getMinHeight = () => node.__a3LoaderMinHeight;
-    const width = Math.max(Number(node.size?.[0]) || 300, 330);
-    const height = Math.max(Number(node.size?.[1]) || 0, contentHeight + 60);
-    if (height > (Number(node.size?.[1]) || 0) + 1) node.setSize?.([width, height]);
-    refreshLayout(node);
+    const widget = node?.__a3LoaderWidget;
+    const panel = node?.__a3LoaderPanel;
+    if (!widget || !panel || node.__a3LoaderResizing) return;
+    node.__a3LoaderResizing = true;
+    try {
+        if (panel.style.height !== "auto") panel.style.height = "auto";
+        const contentHeight = Math.max(1, Math.ceil(panel.scrollHeight || 0));
+        const minHeight = contentHeight + 8;
+        const layoutChanged = node.__a3LoaderMinHeight !== minHeight;
+        node.__a3LoaderMinHeight = minHeight;
+        if (!widget.__a3StableLayoutCallbacks) {
+            widget.computeLayoutSize = () => ({ minHeight: node.__a3LoaderMinHeight, maxHeight: undefined, minWidth: 0 });
+            widget.options ||= {};
+            widget.options.getMinHeight = () => node.__a3LoaderMinHeight;
+            widget.__a3StableLayoutCallbacks = true;
+        }
+        const width = Math.max(Number(node.size?.[0]) || 300, 330);
+        const height = Math.max(Number(node.size?.[1]) || 0, contentHeight + 60);
+        const sizeChanged = height > (Number(node.size?.[1]) || 0) + 1 || width > (Number(node.size?.[0]) || 0) + 1;
+        if (sizeChanged) node.setSize?.([width, height]);
+        if (layoutChanged || sizeChanged) refreshLayout(node);
+    } finally {
+        node.__a3LoaderResizing = false;
+    }
 }
 
 /** 上游 UI 会整表重排 node.widgets，可能把本面板摘掉，这里补回来。 */
