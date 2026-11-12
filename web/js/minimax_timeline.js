@@ -664,6 +664,10 @@ function applyDirectorConfigureRestore(node, data) {
     finalizeDirectorWidgetOrder(node);
     const ok = restoreDirectorWidgetsFromSaved(node, data);
     sanitizeDirectorCacheName(node);
+    if (data?.widgets_values_named && !("model_residency" in data.widgets_values_named)) {
+        const residency = findDirectorWidget(node, "model_residency");
+        if (residency) residency.value = "legacy";
+    }
     return ok;
 }
 
@@ -1763,6 +1767,11 @@ const PERF_WIDGET_ORDER = [
     // configure 阶段按位置塞 widgets_values 时会整体错位一位 —— 实测它抢到了
     // BDGROUP「性能」的值。
     "cache_name",
+    "model_residency",
+    "attention_backend",
+    "reference_encode_cache_mb",
+    "motion_cache",
+    "motion_cache_threshold",
 ];
 
 function moveDirectorPerfWidgetsBeforeTimeline(node) {

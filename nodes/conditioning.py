@@ -126,6 +126,9 @@ def run_minimax_conditioning(
 ):
     """Build positive conditioning + AV latent via official MiniMax H3 nodes."""
     MiniMaxH3ImageToVideo, MiniMaxH3ReferenceToVideo = _load_minimax_nodes()
+    from ..director.performance import conditioning_vae
+    vae = conditioning_vae(vae)
+    audio_vae = conditioning_vae(audio_vae)
 
     ref_images = ref_images or _reference_images_dict_from_kwargs(kwargs)
     ref_videos = _reference_videos_dict(ref_videos)

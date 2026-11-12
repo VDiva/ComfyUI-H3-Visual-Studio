@@ -332,6 +332,9 @@ def _segment_identity_fingerprint(seg: SegmentPlan, plan: DirectorPlan) -> dict[
             record = groups[index]
             if isinstance(record, dict):
                 payload[EXTERNAL_SEGMENT_FP_KEY] = record
+    performance = getattr(plan, "performance_fingerprint", None)
+    if performance:
+        payload["performance"] = performance
     return payload
 
 

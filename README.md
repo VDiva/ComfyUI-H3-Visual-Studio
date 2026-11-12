@@ -15,6 +15,10 @@
 
 工具栏新增“导入项目目录”和“公共素材库”。按 [标准目录与 AI 交付规范](标准目录与AI交付规范.md) 整理章节索引、提示词与共享素材；一次导入生成导演台素材组。公共库数量不限，运行时按每段提示词自动选择引用，仍遵守每段最多 9 图 / 3 音频 / 3 视频。详见 [使用说明](docs/project-directory-import.md)。
 
+## 生成加速
+
+性能组新增模型驻留策略、注意力后端、同次运行的 VAE 编码缓存，以及默认关闭的实验性运动缓存。旧清理开关继续有效，无需 AICG3D。配置、限制和测试范围见 [生成加速说明](docs/generation-acceleration.md)。
+
 ## 功能介绍
 
 **MiniMaxH3Director** 是面向长视频、多段生成的 MiniMax H3 导演台节点，把分段计划、条件编码、采样解码和导出整合在一个节点里。底层走官方 `MiniMaxH3ImageToVideo` / `MiniMaxH3ReferenceToVideo` + `MiniMaxH3SigmaShift` + `KSampler` + AV 分离解码链路，原生输出立体声音频。

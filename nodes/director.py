@@ -316,6 +316,7 @@ class MiniMaxH3Director:
         cache_name="",
         **kwargs,
     ):
+        runtime_performance = {key: kwargs[key] for key in ("model_residency", "attention_backend", "reference_encode_cache_mb", "motion_cache", "motion_cache_threshold") if key in kwargs}
         del kwargs
 
         plan = prepare_director_plan(
@@ -344,6 +345,7 @@ class MiniMaxH3Director:
                     plan,
                     node_id=unique_id,
                     cache_name=cache_name,
+                    runtime_performance=runtime_performance,
                     model=model,
                     vae=video_vae,
                     audio_vae=audio_vae,

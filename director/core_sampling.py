@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Callable
+from .performance import current_performance, prepare_sampling_model, install_motion_reuse
 
 log = logging.getLogger("ComfyUI-MiniMaxH3-Director.director.core_sampling")
 
@@ -103,6 +104,9 @@ class ShiftedModelCache:
         return any(item is model for item in self._items.values())
 
     def clear(self) -> None:
+        state = current_performance()
+        if state and state.config["model_residency"] in ("keep", "cache"):
+            state.retained_patchers.extend(self._items.values())
         self._items.clear()
 
 
@@ -134,6 +138,7 @@ def sample_single_stage(
     on_step_state: StepStateCallback | None = None,
     zero_noise: bool = False,
     noise_override=None,
+    allow_motion_cache: bool = False,
 ):
     import torch
     from comfy_extras.nodes_custom_sampler import (
@@ -176,6 +181,12 @@ def sample_single_stage(
         if remasked is not None:
             model_use = remasked
 
+    remask_model = model_use
+    model_use = prepare_sampling_model(model_use)
+    model_use, motion_reuse = install_motion_reuse(
+        model_use, allowed=allow_motion_cache and not enable_tiling and after_shift is None,
+        steps=max(0, len(sigma_t) - 1), cfg=cfg, negative=negative, sampler_name=str(sampler_name),
+    )
     sampler_obj = _unpack_node_output(KSamplerSelect.execute(str(sampler_name)))[0]
     if noise_override is not None:
         noise_obj = _FixedNoise(noise_override, seed=int(seed or 0))
@@ -243,6 +254,11 @@ def sample_single_stage(
     try:
         out = _run_official()
     finally:
+        if motion_reuse is not None:
+            state = current_performance()
+            if state:
+                state.note(f"MotionCache: reused {motion_reuse.skipped}/{motion_reuse.calls} model evaluations (experimental)")
+            motion_reuse.clear()
         if orig_sample is not None:
             guider.sample = orig_sample
         if restore_tiles is not None:
@@ -251,9 +267,14 @@ def sample_single_stage(
             try:
                 from .h3_latent_continue import uninstall_continue_prefix_remask
 
-                uninstall_continue_prefix_remask(model_use)
+                uninstall_continue_prefix_remask(remask_model)
+                if model_use is not remask_model:
+                    uninstall_continue_prefix_remask(model_use)
             except Exception as exc:
                 log.debug("Prefix remask uninstall skipped: %s", exc)
+        state = current_performance()
+        if state and state.config["model_residency"] in ("keep", "cache"):
+            state.retained_patchers.append(model_use)
         # Drop sampler-graph refs. Keep a cached SigmaShift clone alive so
         # segment cleanup can unload it instead of leaving a dead LoadedModel.
         guider = None

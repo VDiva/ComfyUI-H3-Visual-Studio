@@ -79,6 +79,8 @@ def timeline_required_inputs() -> dict:
 
 def director_perf_inputs() -> dict:
     """Performance widgets shared by Director nodes."""
+    from ..director.performance import performance_inputs
+
     return {
         "bd_grp_perf": ("BDGROUP", {"default": "性能"}),
         "clear_vram_between_segments": (
@@ -161,6 +163,7 @@ def director_perf_inputs() -> dict:
                 ),
             },
         ),
+        **performance_inputs(),
     }
 
 

@@ -13,6 +13,7 @@ from ..lib.image_prep import assert_minimax_canvas, fit_canvas, fit_video_long_e
 from ..lib.task_modes import SUPPORTED_TASK_KEYS
 from ..nodes.conditioning import run_minimax_conditioning
 from .core_sampling import ShiftedModelCache, sample_single_stage
+from .performance import performance_execution, current_performance
 from .selflift.pack import (
     selflift_enabled,
     selflift_will_run,
@@ -407,6 +408,7 @@ def _ref_video_audios_to_dict(items) -> dict | None:
     return out or None
 
 
+@performance_execution
 def execute_director_plan_core(
     plan: DirectorPlan,
     *,
@@ -519,7 +521,9 @@ def execute_director_plan_core(
         reports.append("Live preview: OFF — 跳过采样预览。")
     shift_cache = ShiftedModelCache()
     if clear_vram_between_segments:
-        reports.append("VRAM: 段间清理显存已开启（最后一段不清理）。")
+        perf = current_performance()
+        policy = perf.config["model_residency"] if perf else "legacy"
+        reports.append(f"VRAM: 段间清理策略={policy}（ComfyUI 仍可按需卸载模型）。")
     if clear_vram_before_refine:
         reports.append("VRAM: 二采前清理显存已开启（一采结束后、二采开始前卸载模型）。")
     if clear_vram_before_face_refine:
@@ -1156,7 +1160,7 @@ def execute_director_plan_core(
 
         # Single / last segment: skip — official H3 also keeps models loaded.
         if clear_vram_between_segments and seg_total > 1:
-            cleanup_segment_vram(enabled=True, unload_models=True)
+            cleanup_segment_vram(enabled=True, unload_models=True, between_segments=True)
 
         def _report_sample_phase(phase: str, value: float) -> None:
             report_director_progress(
@@ -1267,6 +1271,7 @@ def execute_director_plan_core(
                 preview_every=1,
                 after_shift=after_shift,
                 shift_cache=shift_cache,
+                allow_motion_cache=True,
             )
 
         first_pass_samples = samples
@@ -1640,7 +1645,7 @@ def execute_director_plan_core(
             )
 
         if clear_vram_between_segments and progress_index < seg_total - 1:
-            cleanup_segment_vram(enabled=True)
+            cleanup_segment_vram(enabled=True, between_segments=True)
 
         reports.append(
             f"Segment {ui_idx + 1}/{timeline_seg_total}: {task_hint} "
@@ -1690,7 +1695,7 @@ def execute_director_plan_core(
                     )
         if seg.index in run_indices:
             if clear_vram_between_segments and segment_outputs:
-                cleanup_segment_vram(enabled=True)
+                cleanup_segment_vram(enabled=True, between_segments=True)
             try:
                 chunk, audio_dict, pre_chunk, pre_face_chunk = _run_one_segment(
                     seg, progress_index=progress_pos[seg.index]

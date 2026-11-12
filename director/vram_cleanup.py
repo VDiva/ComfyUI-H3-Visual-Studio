@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import gc
 import logging
+import time
+from .performance import current_performance, between_segment_policy
 
 log = logging.getLogger("ComfyUI-MiniMaxH3-Director.director.vram")
 
@@ -44,7 +46,7 @@ def _evict_dead_loaded_models() -> int:
     return evicted
 
 
-def cleanup_segment_vram(*, enabled: bool = True, unload_models: bool = True) -> None:
+def cleanup_segment_vram(*, enabled: bool = True, unload_models: bool = True, between_segments: bool = False) -> None:
     """Release segment GPU memory: gc, optional unload of ComfyUI models, empty CUDA cache.
 
     Also drops ComfyUI prefetch queues. Those are normally cleared once, in the
@@ -54,6 +56,11 @@ def cleanup_segment_vram(*, enabled: bool = True, unload_models: bool = True) ->
     """
     if not enabled:
         return
+    if between_segments:
+        enabled, unload_models = between_segment_policy(unload_models)
+        if not enabled:
+            return
+    started = time.perf_counter()
     gc.collect()
     try:
         import comfy.model_management as mm
@@ -75,6 +82,9 @@ def cleanup_segment_vram(*, enabled: bool = True, unload_models: bool = True) ->
     except Exception as exc:
         log.warning("Segment VRAM cleanup failed: %s", exc)
         return
+    state = current_performance()
+    if state:
+        state.cleanup_seconds += time.perf_counter() - started
     if unload_models:
         log.debug("MiniMax H3 Director: segment VRAM cleanup (models unloaded, cache cleared)")
     else:

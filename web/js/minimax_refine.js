@@ -590,6 +590,9 @@ function cacheStatusPayload(director, refine) {
         scheduler: String(directorValue(director, "scheduler", "")),
         shift_video: Number(directorValue(director, "shift_video", 12)),
         shift_audio: Number(directorValue(director, "shift_audio", 3)),
+        attention_backend: String(directorValue(director, "attention_backend", "inherit")),
+        motion_cache: directorValue(director, "motion_cache", false),
+        motion_cache_threshold: Number(directorValue(director, "motion_cache_threshold", 0.02)),
         sigmas_linked: directorHasSigmasLink(director),
         // SelfLift is a graph-wired pack, not a Director widget. The run writes
         // sl_* into first-pass meta; the panel must send the same pack or it

@@ -552,6 +552,8 @@ async def minimax_first_pass_cache_status(request):
             height=int(body.get("height") or 480),
             ref_max_size=int(body.get("ref_max_size") or 864),
         )
+        from .performance import result_fingerprint
+        plan.performance_fingerprint = result_fingerprint(body)
         plan.sample_seed = int(body.get("seed") or 0)
         plan.sample_cfg = float(body.get("cfg") or 1.0)
         plan.sample_steps = int(body.get("steps") or 25)
