@@ -172,6 +172,35 @@ export function ensureSharedLibrary(editor) {
 }
 
 
+/** Remove library metadata only; retain IDs and physical files used by other workflows. */
+export function sharedAssetUsage(timeline, kind, index) {
+    const hits = [];
+    const visit = (value, path) => {
+        if (!value || typeof value !== "object") return;
+        for (const [key, child] of Object.entries(value)) {
+            if (key === "assetLibrary") continue;
+            const location = path ? `${path}.${key}` : key;
+            if (typeof child === "string" && /prompt/i.test(key)) {
+                for (const match of child.matchAll(token)) {
+                    if (kinds[(match[1] || match[3]).toLowerCase()] === kind && Number(match[2] || match[4]) - 1 === index) {
+                        hits.push(location); break;
+                    }
+                }
+            } else if (child && typeof child === "object") visit(child, location);
+        }
+    };
+    visit(timeline, "");
+    return hits;
+}
+
+export function removeSharedAsset(timeline, kind, index) {
+    const library = timeline.global?.assetLibrary;
+    if (!library || !Array.isArray(library[kind])) throw Error("公共素材库不存在");
+    const usage = sharedAssetUsage(timeline, kind, index);
+    if (usage.length) throw Error(`该素材仍被引用，请先修改提示词：\n${usage.join("\n")}`);
+    library[kind] = library[kind].filter(item => Number(item.index) !== Number(index));
+}
+
 /** Visible shared library, independent of the common-prompt enable switch. */
 export function renderSharedLibraryPanel(editor, enabled = true) {
     const root = editor.root;
@@ -235,6 +264,26 @@ export function renderSharedLibraryPanel(editor, enabled = true) {
             name.textContent = item.sourcePath || path;
             name.style.fontSize = "11px";
             card.appendChild(name);
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "bd-btn";
+            remove.textContent = "删除";
+            remove.title = "从公共库移除；其他素材编号和磁盘文件保留";
+            remove.onclick = event => {
+                event.preventDefault(); event.stopPropagation();
+                try {
+                    // Flush in-progress edits before checking references.
+                    editor.commit();
+                    const usage = sharedAssetUsage(editor.timeline, kind, Number(item.index));
+                    if (usage.length) throw Error(`@${label}${item.index + 1} 仍被以下提示词引用，请先移除引用：\n${usage.join("\n")}`);
+                    if (!window.confirm(`从公共库删除 @${label}${item.index + 1}？其他素材编号不变，服务器原文件保留。`)) return;
+                    removeSharedAsset(editor.timeline, kind, Number(item.index));
+                    editor.commit();
+                    editor.renderImageBatchGroups?.();
+                    renderSharedLibraryPanel(editor);
+                } catch (error) { alert(String(error.message || error)); }
+            };
+            card.appendChild(remove);
             grid.appendChild(card);
         }
         section.appendChild(grid);
